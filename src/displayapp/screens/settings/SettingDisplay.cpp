@@ -68,7 +68,7 @@ SettingDisplay::~SettingDisplay() {
 }
 
 void SettingDisplay::UpdateSelected(lv_obj_t* object, lv_event_t event) {
-  if (settingController.GetScreenTimeOut() == 0) {
+  if (settingsController.GetScreenTimeOut() == 0) {
     settingsController.SetAlwaysOnDisplay(true);
   } else {
     settingsController.SetAlwaysOnDisplay(false);
