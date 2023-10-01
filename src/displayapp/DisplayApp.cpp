@@ -225,7 +225,10 @@ void DisplayApp::Refresh() {
           brightnessController.Lower();
           vTaskDelay(100);
         }
-        lcd.Sleep();
+	// Don't actually turn off the display for always on mode
+	if (!settingsController.GetAlwaysOnDisplay()) {
+          lcd.Sleep();
+	}
         PushMessageToSystemTask(Pinetime::System::Messages::OnDisplayTaskSleeping);
         state = States::Idle;
         break;
