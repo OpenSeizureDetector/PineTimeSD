@@ -2,38 +2,61 @@
 #include <hal/nrf_gpio.h>
 #include "displayapp/screens/Symbols.h"
 #include "drivers/PinMap.h"
+
+#include "nrf_pwm.h"
+
 using namespace Pinetime::Controllers;
 
 void BrightnessController::Init() {
   nrf_gpio_cfg_output(PinMap::LcdBacklightLow);
   nrf_gpio_cfg_output(PinMap::LcdBacklightMedium);
   nrf_gpio_cfg_output(PinMap::LcdBacklightHigh);
+
+  nrf_gpio_pin_clear(PinMap::LcdBacklightLow);
+  nrf_gpio_pin_clear(PinMap::LcdBacklightMedium);
+  nrf_gpio_pin_clear(PinMap::LcdBacklightHigh);
+
+  static nrf_pwm_sequence_t seq;
+
+  seq.values.p_common = pwmSequence;
+  seq.length          = 1;
+  seq.repeats         = 0;
+  seq.end_delay       = 0;
+
+  uint32_t out_pins[] = {PinMap::LcdBacklightHigh, PinMap::LcdBacklightMedium, PinMap::LcdBacklightLow, NRF_PWM_PIN_NOT_CONNECTED};
+
+  nrf_pwm_pins_set(NRF_PWM0, out_pins);
+  nrf_pwm_enable(NRF_PWM0);
+  // With 8 MHz and 10000 reload timer PWM frequency is 712 Hz
+  nrf_pwm_configure(NRF_PWM0, NRF_PWM_CLK_8MHz, NRF_PWM_MODE_UP, 10000);
+  nrf_pwm_loop_set(NRF_PWM0, 0);
+  nrf_pwm_decoder_set(NRF_PWM0, NRF_PWM_LOAD_COMMON, NRF_PWM_STEP_AUTO);
+  nrf_pwm_sequence_set(NRF_PWM0, 0, &seq);
+  nrf_pwm_task_trigger(NRF_PWM0, NRF_PWM_TASK_SEQSTART0);
+
   Set(level);
-}
+};
+
+void BrightnessController::setPwm(uint16_t val) {
+  pwmSequence[0] = val;
+  nrf_pwm_task_trigger(NRF_PWM0, NRF_PWM_TASK_SEQSTART0);
+};
 
 void BrightnessController::Set(BrightnessController::Levels level) {
   this->level = level;
   switch (level) {
     default:
     case Levels::High:
-      nrf_gpio_pin_clear(PinMap::LcdBacklightLow);
-      nrf_gpio_pin_clear(PinMap::LcdBacklightMedium);
-      nrf_gpio_pin_clear(PinMap::LcdBacklightHigh);
+      setPwm(10000);
       break;
     case Levels::Medium:
-      nrf_gpio_pin_clear(PinMap::LcdBacklightLow);
-      nrf_gpio_pin_clear(PinMap::LcdBacklightMedium);
-      nrf_gpio_pin_set(PinMap::LcdBacklightHigh);
+      setPwm(3800);
       break;
     case Levels::Low:
-      nrf_gpio_pin_clear(PinMap::LcdBacklightLow);
-      nrf_gpio_pin_set(PinMap::LcdBacklightMedium);
-      nrf_gpio_pin_set(PinMap::LcdBacklightHigh);
+      setPwm(830);
       break;
     case Levels::Off:
-      nrf_gpio_pin_set(PinMap::LcdBacklightLow);
-      nrf_gpio_pin_set(PinMap::LcdBacklightMedium);
-      nrf_gpio_pin_set(PinMap::LcdBacklightHigh);
+      setPwm(70);
       break;
   }
 }
