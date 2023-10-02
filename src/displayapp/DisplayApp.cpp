@@ -221,18 +221,17 @@ void DisplayApp::Refresh() {
         RestoreBrightness();
         break;
       case Messages::GoToSleep:
-	// If brightnessController.Level() is not set to Off before going to sleep then the watch locks up at some point. Dim the screen all the way off regardless of AlwaysOn status
-        while (brightnessController.Level() != Controllers::BrightnessController::Levels::Off) {
+        while (brightnessController.Level() != Controllers::BrightnessController::Levels::Low) {
           brightnessController.Lower();
           vTaskDelay(100);
         }
 	// Don't actually turn off the display for AlwaysOn mode
 	if (!settingsController.GetAlwaysOnDisplay()) {
+	  brightnessController.Set(Controllers::BrightnessController::Levels::Off);
           lcd.Sleep();
-	// Turn the brightness up manually for AlwaysOn
 	} else {
 	  brightnessController.Set(Controllers::BrightnessController::Levels::Lowest);
-	}
+	} 
         PushMessageToSystemTask(Pinetime::System::Messages::OnDisplayTaskSleeping);
         state = States::Idle;
         break;
