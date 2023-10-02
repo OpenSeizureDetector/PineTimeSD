@@ -55,8 +55,11 @@ void BrightnessController::Set(BrightnessController::Levels level) {
     case Levels::Low:
       setPwm(830);
       break;
-    case Levels::Off:
+    case Levels::Lowest:
       setPwm(70);
+      break;
+    case Levels::Off:
+      setPwm(0);
       break;
   }
 }
