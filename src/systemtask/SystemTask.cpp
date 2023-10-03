@@ -195,7 +195,10 @@ void SystemTask::Work() {
           doNotGoToSleep = true;
           break;
         case Messages::GoToRunning:
-          spi.Wakeup();
+	  // spi doesn't go to sleep for always on mode
+	  if (!settingsController.GetAlwaysOnDisplay()) {
+            spi.Wakeup();
+	  }
 
           // Double Tap needs the touch screen to be in normal mode
           if (!settingsController.isWakeUpModeOn(Pinetime::Controllers::Settings::WakeUpMode::DoubleTap)) {
