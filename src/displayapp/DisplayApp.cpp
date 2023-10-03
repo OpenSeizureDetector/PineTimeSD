@@ -187,7 +187,12 @@ void DisplayApp::Refresh() {
   switch (state) {
     case States::Idle:
       if (settingsController.GetAlwaysOnDisplay()) {
-        queueTimeout = lv_task_handler();
+        if (!currentScreen->IsRunning()) {
+          LoadPreviousScreen();
+        }
+	int lvglWaitTime = lv_task_handler();
+	// while in always on mode, throttle LVGL events to 4Hz
+        queueTimeout = std::max(lvglWaitTime, 250);
       } else {
         queueTimeout = portMAX_DELAY;
       }
