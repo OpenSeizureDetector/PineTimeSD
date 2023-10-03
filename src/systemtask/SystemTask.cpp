@@ -320,7 +320,12 @@ void SystemTask::Work() {
             // if it's in sleep mode. Avoid bricked device by disabling sleep mode on these versions.
             spiNorFlash.Sleep();
           }
-          spi.Sleep();
+
+	  // If the spi goes to sleep, AlwaysOn will not update the screen while dim, and the screen colors invert
+	  // upon wakeup
+	  if (!settingsController.GetAlwaysOnDisplay()) {
+            spi.Sleep();
+	  }
 
           // Double Tap needs the touch screen to be in normal mode
           if (!settingsController.isWakeUpModeOn(Pinetime::Controllers::Settings::WakeUpMode::DoubleTap)) {
