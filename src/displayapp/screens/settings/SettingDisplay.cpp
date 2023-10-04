@@ -77,7 +77,7 @@ SettingDisplay::~SettingDisplay() {
 }
 
 void SettingDisplay::ToggleAlwaysOn() {
-  settingsController.SetAlwaysOnDisplay(!settingsController.GetAlwaysOnDisplay());
+  settingsController.SetAlwaysOnDisplaySetting(!settingsController.GetAlwaysOnDisplaySetting());
   lv_checkbox_set_checked(alwaysOn_checkbox, settingsController.GetAlwaysOnDisplay());
 }
 

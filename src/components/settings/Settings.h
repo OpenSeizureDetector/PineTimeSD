@@ -184,6 +184,14 @@ namespace Pinetime {
         if (status != settings.notificationStatus) {
           settingsChanged = true;
         }
+	// Disable always on screen while sleep mode is enabled
+	if (settings.alwaysOnDisplay.enabled) {
+	  if (status == Notification::Sleep) {
+	    settings.alwaysOnDisplay.state = false;
+	  } else {
+            settings.alwaysOnDisplay.state = true;
+	  }
+	}
         settings.notificationStatus = status;
       };
 
@@ -203,15 +211,29 @@ namespace Pinetime {
       };
 
       void SetAlwaysOnDisplay(bool state) {
-        if (state != settings.alwaysOnDisplay) {
+        if (state != settings.alwaysOnDisplay.state) {
           settingsChanged = true;
         }
-        settings.alwaysOnDisplay = state;
+        settings.alwaysOnDisplay.state = state;
       };
 
       bool GetAlwaysOnDisplay() const {
-        return settings.alwaysOnDisplay;
+        return settings.alwaysOnDisplay.state;
       };
+
+      void SetAlwaysOnDisplaySetting(bool state) {
+        if (state != settings.alwaysOnDisplay.enabled) {
+          settingsChanged = true;
+        }
+	settings.alwaysOnDisplay.enabled = state;
+	// the always on state and enabled flags should always match
+	// if the setting is being modified by the user
+	SetAlwaysOnDisplay(state);
+      }
+
+      bool GetAlwaysOnDisplaySetting() const {
+        return settings.alwaysOnDisplay.enabled;
+      }
 
       void SetShakeThreshold(uint16_t thresh) {
         if (settings.shakeWakeThreshold != thresh) {
@@ -287,12 +309,19 @@ namespace Pinetime {
 
       static constexpr uint32_t settingsVersion = 0x0006;
 
+      // To enable disabling it durring notificationsleep, differenciate between 
+      // the setting being on, and the setting being set by the user
+      struct alwaysOnDisplayData {
+	bool enabled = false;
+	bool state = false;
+      };
+
       struct SettingsData {
         uint32_t version = settingsVersion;
         uint32_t stepsGoal = 10000;
         uint32_t screenTimeOut = 15000;
 
-        bool alwaysOnDisplay = false;
+	alwaysOnDisplayData alwaysOnDisplay;
 
         ClockType clockType = ClockType::H24;
         Notification notificationStatus = Notification::On;
