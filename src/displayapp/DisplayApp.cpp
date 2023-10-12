@@ -190,8 +190,8 @@ void DisplayApp::Refresh() {
         if (!currentScreen->IsRunning()) {
           LoadPreviousScreen();
         }
-	int lvglWaitTime = lv_task_handler();
-	// while in always on mode, throttle LVGL events to 4Hz
+        int lvglWaitTime = lv_task_handler();
+        // while in always on mode, throttle LVGL events to 4Hz
         queueTimeout = std::max(lvglWaitTime, 250);
       } else {
         queueTimeout = portMAX_DELAY;
@@ -234,13 +234,13 @@ void DisplayApp::Refresh() {
           brightnessController.Lower();
           vTaskDelay(100);
         }
-	// Don't actually turn off the display for AlwaysOn mode
-	if (!settingsController.GetAlwaysOnDisplay()) {
-	  brightnessController.Set(Controllers::BrightnessController::Levels::Off);
+        // Don't actually turn off the display for AlwaysOn mode
+        if (settingsController.GetAlwaysOnDisplay()) {
+          brightnessController.Set(Controllers::BrightnessController::Levels::Lowest);
+        } else {
+          brightnessController.Set(Controllers::BrightnessController::Levels::Off);
           lcd.Sleep();
-	} else {
-	  brightnessController.Set(Controllers::BrightnessController::Levels::Lowest);
-	} 
+        } 
         PushMessageToSystemTask(Pinetime::System::Messages::OnDisplayTaskSleeping);
         state = States::Idle;
         break;

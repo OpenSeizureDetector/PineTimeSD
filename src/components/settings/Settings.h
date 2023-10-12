@@ -184,14 +184,14 @@ namespace Pinetime {
         if (status != settings.notificationStatus) {
           settingsChanged = true;
         }
-	// Disable always on screen while sleep mode is enabled
-	if (settings.alwaysOnDisplay.enabled) {
-	  if (status == Notification::Sleep) {
-	    settings.alwaysOnDisplay.state = false;
-	  } else {
+        // Disable always on screen while sleep mode is enabled
+        if (settings.alwaysOnDisplay.enabled) {
+          if (status == Notification::Sleep) {
+            settings.alwaysOnDisplay.state = false;
+          } else {
             settings.alwaysOnDisplay.state = true;
-	  }
-	}
+          }
+        }
         settings.notificationStatus = status;
       };
 
@@ -225,10 +225,10 @@ namespace Pinetime {
         if (state != settings.alwaysOnDisplay.enabled) {
           settingsChanged = true;
         }
-	settings.alwaysOnDisplay.enabled = state;
-	// the always on state and enabled flags should always match
-	// if the setting is being modified by the user
-	SetAlwaysOnDisplay(state);
+        settings.alwaysOnDisplay.enabled = state;
+        // the always on state and enabled flags should always match
+        // if the setting is being modified by the user
+        SetAlwaysOnDisplay(state);
       }
 
       bool GetAlwaysOnDisplaySetting() const {
@@ -312,8 +312,8 @@ namespace Pinetime {
       // To enable disabling it durring notificationsleep, differenciate between 
       // the setting being on, and the setting being set by the user
       struct alwaysOnDisplayData {
-	bool enabled = false;
-	bool state = false;
+        bool enabled = false;
+        bool state = false;
       };
 
       struct SettingsData {
@@ -321,7 +321,7 @@ namespace Pinetime {
         uint32_t stepsGoal = 10000;
         uint32_t screenTimeOut = 15000;
 
-	alwaysOnDisplayData alwaysOnDisplay;
+        alwaysOnDisplayData alwaysOnDisplay;
 
         ClockType clockType = ClockType::H24;
         Notification notificationStatus = Notification::On;

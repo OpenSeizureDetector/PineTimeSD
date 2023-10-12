@@ -195,10 +195,10 @@ void SystemTask::Work() {
           doNotGoToSleep = true;
           break;
         case Messages::GoToRunning:
-	  // spi doesn't go to sleep for always on mode
-	  if (!settingsController.GetAlwaysOnDisplay()) {
+          // spi doesn't go to sleep for always on mode
+          if (!settingsController.GetAlwaysOnDisplay()) {
             spi.Wakeup();
-	  }
+          }
 
           // Double Tap needs the touch screen to be in normal mode
           if (!settingsController.isWakeUpModeOn(Pinetime::Controllers::Settings::WakeUpMode::DoubleTap)) {
@@ -324,11 +324,11 @@ void SystemTask::Work() {
             spiNorFlash.Sleep();
           }
 
-	  // If the spi goes to sleep, AlwaysOn will not update the screen while dim, and the screen colors invert
-	  // upon wakeup
-	  if (!settingsController.GetAlwaysOnDisplay()) {
+          // If the spi goes to sleep, AlwaysOn will not update the screen while dim, and the screen colors invert
+          // upon wakeup
+          if (!settingsController.GetAlwaysOnDisplay()) {
             spi.Sleep();
-	  }
+          }
 
           // Double Tap needs the touch screen to be in normal mode
           if (!settingsController.isWakeUpModeOn(Pinetime::Controllers::Settings::WakeUpMode::DoubleTap)) {
