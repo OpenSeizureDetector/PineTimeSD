@@ -19,9 +19,9 @@ void BrightnessController::Init() {
   static nrf_pwm_sequence_t seq;
 
   seq.values.p_common = pwmSequence;
-  seq.length          = 1;
-  seq.repeats         = 0;
-  seq.end_delay       = 0;
+  seq.length = 1;
+  seq.repeats = 0;
+  seq.end_delay = 0;
 
   uint32_t out_pins[] = {PinMap::LcdBacklightHigh, PinMap::LcdBacklightMedium, PinMap::LcdBacklightLow, NRF_PWM_PIN_NOT_CONNECTED};
 

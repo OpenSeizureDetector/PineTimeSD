@@ -13,6 +13,7 @@ namespace {
     auto* screen = static_cast<SettingDisplay*>(obj->user_data);
     screen->UpdateSelected(obj, event);
   }
+
   void alwaysOn_event_handler(lv_obj_t* obj, lv_event_t event) {
     if (event == LV_EVENT_VALUE_CHANGED) {
       auto* screen = static_cast<SettingDisplay*>(obj->user_data);

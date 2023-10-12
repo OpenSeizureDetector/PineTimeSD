@@ -309,7 +309,7 @@ namespace Pinetime {
 
       static constexpr uint32_t settingsVersion = 0x0006;
 
-      // To enable disabling it durring notificationsleep, differenciate between 
+      // To enable disabling it durring notificationsleep, differenciate between
       // the setting being on, and the setting being set by the user
       struct alwaysOnDisplayData {
         bool enabled = false;
