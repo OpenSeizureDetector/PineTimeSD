@@ -307,7 +307,7 @@ namespace Pinetime {
     private:
       Pinetime::Controllers::FS& fs;
 
-      static constexpr uint32_t settingsVersion = 0x0006;
+      static constexpr uint32_t settingsVersion = 0x0007;
 
       // To enable disabling it durring notificationsleep, differenciate between
       // the setting being on, and the setting being set by the user
