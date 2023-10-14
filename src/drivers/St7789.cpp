@@ -114,6 +114,22 @@ void St7789::IdleModeOff() {
   nrf_delay_ms(10);
 }
 
+void St7789::FrameRateLow() {
+  WriteCommand(static_cast<uint8_t>(Commands::FrameRate));
+  WriteData(0x13);
+  WriteData(0x1f);
+  WriteData(0x1f);
+  nrf_delay_ms(250);
+}
+
+void St7789::FrameRateNormal() {
+  WriteCommand(static_cast<uint8_t>(Commands::FrameRate));
+  WriteData(0x00);
+  WriteData(0x0f);
+  WriteData(0x0f);
+  nrf_delay_ms(250);
+}
+
 void St7789::DisplayOn() {
   WriteCommand(static_cast<uint8_t>(Commands::DisplayOn));
 }
@@ -195,11 +211,13 @@ void St7789::HardwareReset() {
 
 void St7789::LowPowerOn() {
   IdleModeOn();
+  FrameRateLow();
   NRF_LOG_INFO("[LCD] Low power mode");
 }
 
 void St7789::LowPowerOff() {
   IdleModeOff();
+  FrameRateNormal();
   NRF_LOG_INFO("[LCD] Normal power mode");
 }
 
