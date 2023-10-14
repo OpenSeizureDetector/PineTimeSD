@@ -104,6 +104,16 @@ void St7789::NormalModeOn() {
   nrf_delay_ms(10);
 }
 
+void St7789::IdleModeOn() {
+  WriteCommand(static_cast<uint8_t>(Commands::IdleModeOn));
+  nrf_delay_ms(10);
+}
+
+void St7789::IdleModeOff() {
+  WriteCommand(static_cast<uint8_t>(Commands::IdleModeOff));
+  nrf_delay_ms(10);
+}
+
 void St7789::DisplayOn() {
   WriteCommand(static_cast<uint8_t>(Commands::DisplayOn));
 }
@@ -181,6 +191,16 @@ void St7789::HardwareReset() {
   nrf_gpio_pin_clear(pinReset);
   nrf_delay_ms(10);
   nrf_gpio_pin_set(pinReset);
+}
+
+void St7789::LowPowerOn() {
+  IdleModeOn();
+  NRF_LOG_INFO("[LCD] Low power mode");
+}
+
+void St7789::LowPowerOff() {
+  IdleModeOff();
+  NRF_LOG_INFO("[LCD] Normal power mode");
 }
 
 void St7789::Sleep() {

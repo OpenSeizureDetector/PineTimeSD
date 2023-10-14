@@ -23,6 +23,8 @@ namespace Pinetime {
 
       void DrawBuffer(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t* data, size_t size);
 
+      void LowPowerOn();
+      void LowPowerOff();
       void Sleep();
       void Wakeup();
 
@@ -40,6 +42,8 @@ namespace Pinetime {
       void MemoryDataAccessControl();
       void DisplayInversionOn();
       void NormalModeOn();
+      void IdleModeOn();
+      void IdleModeOff();
       void WriteToRam();
       void DisplayOn();
       void DisplayOff();
@@ -63,6 +67,8 @@ namespace Pinetime {
         MemoryDataAccessControl = 0x36,
         VerticalScrollDefinition = 0x33,
         VerticalScrollStartAddress = 0x37,
+        IdleModeOff = 0x38,
+        IdleModeOn = 0x39,
         ColMod = 0x3a,
         VdvSet = 0xc4,
       };
