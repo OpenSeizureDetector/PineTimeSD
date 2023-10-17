@@ -15,6 +15,7 @@ void St7789::Init() {
   nrf_gpio_pin_set(pinReset);
   HardwareReset();
   SoftwareReset();
+  Command2Enable();
   SleepOut();
   ColMod();
   MemoryDataAccessControl();
@@ -26,6 +27,7 @@ void St7789::Init() {
 #endif
   NormalModeOn();
   SetVdv();
+  PowerControl();
   DisplayOn();
 }
 
@@ -46,6 +48,14 @@ void St7789::WriteSpi(const uint8_t* data, size_t size) {
 void St7789::SoftwareReset() {
   WriteCommand(static_cast<uint8_t>(Commands::SoftwareReset));
   nrf_delay_ms(150);
+}
+
+void St7789::Command2Enable() {
+  WriteCommand(static_cast<uint8_t>(Commands::Command2Enable));
+  WriteData(0x5a);
+  WriteData(0x69);
+  WriteData(0x02);
+  WriteData(0x01);
 }
 
 void St7789::SleepOut() {
@@ -119,7 +129,7 @@ void St7789::FrameRateLow() {
   WriteData(0x13);
   WriteData(0x1f);
   WriteData(0x1f);
-  nrf_delay_ms(250);
+  nrf_delay_ms(300);
 }
 
 void St7789::FrameRateNormal() {
@@ -127,11 +137,20 @@ void St7789::FrameRateNormal() {
   WriteData(0x00);
   WriteData(0x0f);
   WriteData(0x0f);
-  nrf_delay_ms(250);
+  nrf_delay_ms(300);
 }
 
 void St7789::DisplayOn() {
   WriteCommand(static_cast<uint8_t>(Commands::DisplayOn));
+}
+
+void St7789::PowerControl() {
+  WriteCommand(static_cast<uint8_t>(Commands::PowerControl1));
+  WriteData(0xa4);
+  WriteData(0x30);
+
+  WriteCommand(static_cast<uint8_t>(Commands::PowerControl2));
+  WriteData(0xb3);
 }
 
 void St7789::SetAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
