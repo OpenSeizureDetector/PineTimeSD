@@ -147,7 +147,7 @@ void St7789::DisplayOn() {
 void St7789::PowerControl() {
   WriteCommand(static_cast<uint8_t>(Commands::PowerControl1));
   WriteData(0xa4);
-  WriteData(0x30);
+  WriteData(0x00);
 
   WriteCommand(static_cast<uint8_t>(Commands::PowerControl2));
   WriteData(0xb3);
