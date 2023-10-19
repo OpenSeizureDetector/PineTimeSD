@@ -245,6 +245,9 @@ void DisplayApp::Refresh() {
       case Messages::NotifyDeviceActivity:
         lv_disp_trig_activity(nullptr);
         break;
+      case Messages::RestoreBrightness:
+        RestoreBrightness();
+        break;
       case Messages::GoToRunning:
         if (settingsController.GetAlwaysOnDisplay()) {
           lcd.LowPowerOff();

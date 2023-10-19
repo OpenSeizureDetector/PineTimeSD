@@ -455,7 +455,7 @@ void SystemTask::HandleButtonAction(Controllers::ButtonActions action) {
     return;
   }
 
-  displayApp.PushMessage(Pinetime::Applications::Display::Messages::NotifyDeviceActivity);
+  displayApp.PushMessage(Pinetime::Applications::Display::Messages::RestoreBrightness);
 
   using Actions = Controllers::ButtonActions;
 
