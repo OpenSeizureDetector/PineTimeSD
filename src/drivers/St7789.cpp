@@ -128,8 +128,8 @@ void St7789::IdleModeOff() {
 void St7789::FrameRateLow() {
   WriteCommand(static_cast<uint8_t>(Commands::FrameRate));
   WriteData(0x13);
-  WriteData(0x1f);
-  WriteData(0x1f);
+  WriteData(0x1e);
+  WriteData(0x1e);
   vTaskDelay(pdMS_TO_TICKS(300));
 }
 
