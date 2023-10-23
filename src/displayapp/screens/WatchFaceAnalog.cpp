@@ -203,7 +203,7 @@ void WatchFaceAnalog::UpdateClock() {
     lv_line_set_points(hour_body_trace, hour_point_trace, 2);
   }
 
-  if (sSecond != second) {
+  if (!alwaysOnDisplay.Get() && sSecond != second) {
     sSecond = second;
     auto const angle = second * 6;
 
@@ -234,6 +234,15 @@ void WatchFaceAnalog::Refresh() {
     batteryPercentRemaining = batteryController.PercentRemaining();
     if (batteryPercentRemaining.IsUpdated()) {
       SetBatteryIcon();
+    }
+  }
+
+  alwaysOnDisplay = settingsController.GetAlwaysOnDisplay();
+  if (alwaysOnDisplay.IsUpdated()) {
+    if (alwaysOnDisplay.Get()) {
+      lv_obj_set_hidden(second_body, true);
+    } else {
+      lv_obj_set_hidden(second_body, false);
     }
   }
 
