@@ -48,7 +48,7 @@ void St7789::WriteSpi(const uint8_t* data, size_t size) {
 
 void St7789::SoftwareReset() {
   WriteCommand(static_cast<uint8_t>(Commands::SoftwareReset));
-  nrf_delay_ms(150);
+  vTaskDelay(pdMS_TO_TICKS(150));
 }
 
 void St7789::Command2Enable() {
@@ -70,7 +70,7 @@ void St7789::SleepIn() {
 void St7789::ColMod() {
   WriteCommand(static_cast<uint8_t>(Commands::ColMod));
   WriteData(0x55);
-  nrf_delay_ms(10);
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void St7789::MemoryDataAccessControl() {
@@ -107,22 +107,22 @@ void St7789::RowAddressSet() {
 
 void St7789::DisplayInversionOn() {
   WriteCommand(static_cast<uint8_t>(Commands::DisplayInversionOn));
-  nrf_delay_ms(10);
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void St7789::NormalModeOn() {
   WriteCommand(static_cast<uint8_t>(Commands::NormalModeOn));
-  nrf_delay_ms(10);
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void St7789::IdleModeOn() {
   WriteCommand(static_cast<uint8_t>(Commands::IdleModeOn));
-  nrf_delay_ms(10);
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void St7789::IdleModeOff() {
   WriteCommand(static_cast<uint8_t>(Commands::IdleModeOff));
-  nrf_delay_ms(10);
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void St7789::FrameRateLow() {
@@ -130,7 +130,7 @@ void St7789::FrameRateLow() {
   WriteData(0x13);
   WriteData(0x1f);
   WriteData(0x1f);
-  nrf_delay_ms(300);
+  vTaskDelay(pdMS_TO_TICKS(300));
 }
 
 void St7789::FrameRateNormal() {
@@ -138,7 +138,7 @@ void St7789::FrameRateNormal() {
   WriteData(0x00);
   WriteData(0x0f);
   WriteData(0x0f);
-  nrf_delay_ms(300);
+  vTaskDelay(pdMS_TO_TICKS(300));
 }
 
 void St7789::DisplayOn() {
@@ -188,7 +188,7 @@ void St7789::SetVdv() {
 
 void St7789::DisplayOff() {
   WriteCommand(static_cast<uint8_t>(Commands::DisplayOff));
-  nrf_delay_ms(500);
+  vTaskDelay(pdMS_TO_TICKS(500));
 }
 
 void St7789::VerticalScrollDefinition(uint16_t topFixedLines, uint16_t scrollLines, uint16_t bottomFixedLines) {
@@ -230,7 +230,7 @@ void St7789::DrawBuffer(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
 
 void St7789::HardwareReset() {
   nrf_gpio_pin_clear(pinReset);
-  nrf_delay_ms(10);
+  vTaskDelay(pdMS_TO_TICKS(10));
   nrf_gpio_pin_set(pinReset);
 }
 
