@@ -135,13 +135,13 @@ void St7789::PorchSet() {
   WriteData(0x01);
   WriteData(0xed);
   WriteData(0xed);
-  vTaskDelay(pdMS_TO_TICKS(300));
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void St7789::FrameRateNormalSet() {
   WriteCommand(static_cast<uint8_t>(Commands::FrameRateNormal));
   WriteData(0x0a);
-  vTaskDelay(pdMS_TO_TICKS(300));
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void St7789::IdleFrameRateOn() {
@@ -149,7 +149,7 @@ void St7789::IdleFrameRateOn() {
   WriteData(0x13);
   WriteData(0x1e);
   WriteData(0x1e);
-  vTaskDelay(pdMS_TO_TICKS(300));
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void St7789::IdleFrameRateOff() {
@@ -157,7 +157,7 @@ void St7789::IdleFrameRateOff() {
   WriteData(0x00);
   WriteData(0x0a);
   WriteData(0x0a);
-  vTaskDelay(pdMS_TO_TICKS(300));
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void St7789::DisplayOn() {
@@ -207,7 +207,7 @@ void St7789::SetVdv() {
 
 void St7789::DisplayOff() {
   WriteCommand(static_cast<uint8_t>(Commands::DisplayOff));
-  vTaskDelay(pdMS_TO_TICKS(500));
+  vTaskDelay(pdMS_TO_TICKS(200));
 }
 
 void St7789::VerticalScrollDefinition(uint16_t topFixedLines, uint16_t scrollLines, uint16_t bottomFixedLines) {
