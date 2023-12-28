@@ -1,6 +1,7 @@
 #include "components/datetime/DateTimeController.h"
 #include <libraries/log/nrf_log.h>
 #include <systemtask/SystemTask.h>
+#include <hal/nrf_rtc.h>
 
 using namespace Pinetime::Controllers;
 
@@ -16,7 +17,7 @@ DateTime::DateTime(Controllers::Settings& settingsController) : settingsControll
 
 void DateTime::SetCurrentTime(std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> t) {
   this->currentDateTime = t;
-  UpdateTime(previousSystickCounter); // Update internal state without updating the time
+  UpdateTime(previousSystickCounter, true); // Update internal state without updating the time
 }
 
 void DateTime::SetTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second) {
@@ -35,7 +36,7 @@ void DateTime::SetTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, 
   NRF_LOG_INFO("%d %d %d ", day, month, year);
   NRF_LOG_INFO("%d %d %d ", hour, minute, second);
 
-  UpdateTime(previousSystickCounter);
+  UpdateTime(previousSystickCounter, true);
 
   systemTask->PushMessage(System::Messages::OnNewTime);
 }
@@ -45,11 +46,16 @@ void DateTime::SetTimeZone(int8_t timezone, int8_t dst) {
   dstOffset = dst;
 }
 
-void DateTime::UpdateTime(uint32_t systickCounter) {
+std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> DateTime::CurrentDateTime() {
+  UpdateTime(nrf_rtc_counter_get(portNRF_RTC_REG), false);
+  return currentDateTime;
+}
+
+void DateTime::UpdateTime(uint32_t systickCounter, bool forceUpdate) {
   // Handle systick counter overflow
   uint32_t systickDelta = 0;
   if (systickCounter < previousSystickCounter) {
-    systickDelta = 0xffffff - previousSystickCounter;
+    systickDelta = static_cast<uint32_t>(portNRF_RTC_MAXTICKS) - previousSystickCounter;
     systickDelta += systickCounter + 1;
   } else {
     systickDelta = systickCounter - previousSystickCounter;
@@ -59,11 +65,16 @@ void DateTime::UpdateTime(uint32_t systickCounter) {
    * 1000 ms = 1024 ticks
    */
   auto correctedDelta = systickDelta / 1024;
+  // if a second hasn't passed, there is nothing to do
+  // if the time has been changed, set forceUpdate to trigger internal state updates
+  if (correctedDelta == 0 && !forceUpdate) {
+    return;
+  }
   auto rest = systickDelta % 1024;
   if (systickCounter >= rest) {
     previousSystickCounter = systickCounter - rest;
   } else {
-    previousSystickCounter = 0xffffff - (rest - systickCounter);
+    previousSystickCounter = static_cast<uint32_t>(portNRF_RTC_MAXTICKS) - (rest - systickCounter + 1);
   }
 
   currentDateTime += std::chrono::seconds(correctedDelta);
