@@ -142,3 +142,13 @@ void MotionController::Init(Pinetime::Drivers::Bma421::DeviceTypes types) {
       break;
   }
 }
+<<<<<<< HEAD
+=======
+void MotionController::SetService(Pinetime::Controllers::MotionService* service) {
+  this->service = service;
+}
+
+Pinetime::Controllers::MotionService* MotionController::GetService() const {
+  return this->service;
+}
+>>>>>>> bf970ca7987b38e8d7f8219f0964376513f5c45a

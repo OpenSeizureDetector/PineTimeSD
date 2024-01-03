@@ -58,9 +58,12 @@ namespace Pinetime {
 
       void Init(Pinetime::Drivers::Bma421::DeviceTypes types);
 
-      void SetService(Pinetime::Controllers::MotionService* service) {
-        this->service = service;
-      }
+
+      void SetService(Pinetime::Controllers::MotionService* service);
+
+      
+      Pinetime::Controllers::MotionService* GetService() const;
+
 
     private:
       uint32_t nbSteps = 0;
