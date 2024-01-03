@@ -1,4 +1,16 @@
-# [InfiniTime](https://github.com/InfiniTimeOrg/InfiniTime)
+# InfiniTimeSD
+This repository is a fork of the [InfiniTime](https://github.com/InfiniTimeOrg/InfiniTime) firmware for the [PineTime smartwatch](https://www.pine64.org/pinetime/).
+It is optimised for use as a BLE DataSource for [OpenSeizureDetector](https://openseizuredetector.org.uk).
+
+## GJ Build Notes
+  - I had trouble building it on Ubuntu, so use the docker container provided by the Infinitime Project.
+  - Build with:
+     - cd InfinitimeSD
+     - docker run --rm -it -v ${PWD}:/sources --user $(id -u):$(id -g) infinitime-build
+  - Flash the DFU format binary (e.g. build/output/pinetime-mcuboot-app-dfu-1.13.1.zip) using either
+  GadgetBridge for Android or Siglo on Linux.  (The waspos wasptool.py or dfu.py scripts do not work)
+
+# InfiniTime     
 
 ![InfiniTime logo](doc/logo/infinitime-logo-small.jpg "InfiniTime Logo")
 
