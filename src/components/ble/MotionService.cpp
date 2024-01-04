@@ -112,6 +112,12 @@ void MotionService::SubscribeNotification(uint16_t attributeHandle) {
     stepCountNoficationEnabled = true;
   else if (attributeHandle == motionValuesHandle)
     motionValuesNoficationEnabled = true;
+  
+  // FIXME - this is a fiddle to avoid an unused parameter warning (Which is treated as a 
+  //          compile error)
+  //if (connectionHandle) {
+  //  return
+  //}
 }
 
 void MotionService::UnsubscribeNotification(uint16_t attributeHandle) {
@@ -119,6 +125,13 @@ void MotionService::UnsubscribeNotification(uint16_t attributeHandle) {
     stepCountNoficationEnabled = false;
   else if (attributeHandle == motionValuesHandle)
     motionValuesNoficationEnabled = false;
+  
+  // FIXME - this is a fiddle to avoid an unused parameter warning (Which is treated as a 
+  //          compile error)
+  //if (connectionHandle) {
+  //  return
+  //}
+
 }
 
 bool MotionService::IsMotionNotificationSubscribed() const {

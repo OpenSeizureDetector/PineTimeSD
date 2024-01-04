@@ -19,8 +19,10 @@ namespace Pinetime {
       void OnNewStepCountValue(uint32_t stepCount);
       void OnNewMotionValues(int16_t x, int16_t y, int16_t z);
 
-      void SubscribeNotification(uint16_t connectionHandle, uint16_t attributeHandle);
-      void UnsubscribeNotification(uint16_t connectionHandle, uint16_t attributeHandle);
+      //void SubscribeNotification(uint16_t connectionHandle, uint16_t attributeHandle);
+      //void UnsubscribeNotification(uint16_t connectionHandle, uint16_t attributeHandle);
+      void SubscribeNotification(uint16_t attributeHandle);
+      void UnsubscribeNotification(uint16_t attributeHandle);
       bool IsMotionNotificationSubscribed() const;
 
     private:
