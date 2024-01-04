@@ -8,7 +8,8 @@ It is optimised for use as a BLE DataSource for [OpenSeizureDetector](https://op
      - cd InfinitimeSD
      - docker run --rm -it -v ${PWD}:/sources --user $(id -u):$(id -g) infinitime-build
   - Flash the DFU format binary (e.g. build/output/pinetime-mcuboot-app-dfu-1.13.1.zip) using either
-  GadgetBridge for Android or Siglo on Linux.  (The waspos wasptool.py or dfu.py scripts do not work)
+  GadgetBridge for Android or Siglo on Linux.  (The waspos wasptool.py or dfu.py scripts do not work).  Siglo seems a bit tempremental - you seem to have to manually pair the watch to the laptop
+  before it will work (but there is no helpful error message to say that!)
 
 # InfiniTime     
 
