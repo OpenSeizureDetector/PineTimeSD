@@ -6,6 +6,8 @@
 #undef max
 #undef min
 
+#include "utility/CircularBuffer.h"
+
 namespace Pinetime {
   namespace Controllers {
     class NimbleController;
@@ -19,11 +21,10 @@ namespace Pinetime {
       void OnNewStepCountValue(uint32_t stepCount);
       void OnNewMotionValues(int16_t x, int16_t y, int16_t z);
 
-      //void SubscribeNotification(uint16_t connectionHandle, uint16_t attributeHandle);
-      //void UnsubscribeNotification(uint16_t connectionHandle, uint16_t attributeHandle);
       void SubscribeNotification(uint16_t attributeHandle);
       void UnsubscribeNotification(uint16_t attributeHandle);
       bool IsMotionNotificationSubscribed() const;
+
 
     private:
       NimbleController& nimble;
@@ -36,6 +37,13 @@ namespace Pinetime {
       uint16_t motionValuesHandle;
       std::atomic_bool stepCountNoficationEnabled {false};
       std::atomic_bool motionValuesNoficationEnabled {false};
+
+      // A small buffer
+      static constexpr uint8_t accBufSize = 9; // The number of measurements to acquire before notifying subscribers of new data.
+      //Utility::CircularBuffer<int16_t, accBufSize> accBuf = {};
+      int16_t accBuf[accBufSize] = {};
+      uint16_t accBufIdx = 0;
+      uint16_t testVal = 0;
     };
   }
 }
