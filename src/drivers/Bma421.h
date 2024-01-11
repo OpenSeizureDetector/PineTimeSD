@@ -9,15 +9,14 @@ namespace Pinetime {
     public:
       enum class DeviceTypes : uint8_t { Unknown, BMA421, BMA425 };
 
-      // Scale factors to convert accelerometer counts to milli-g
-      // The array values are initialised in Bma421.cpp
-      static const short accelScaleFactors[];
-
       struct Values {
         uint32_t steps;
-        int16_t x;
-        int16_t y;
-        int16_t z;
+        //int16_t x;
+        //int16_t y;
+        //int16_t z;
+        int16_t *fifo;
+        uint16_t nFifo;
+
       };
 
       Bma421(TwiMaster& twiMaster, uint8_t twiAddress);
@@ -45,7 +44,9 @@ namespace Pinetime {
       TwiMaster& twiMaster;
       uint8_t deviceAddress = 0x18;
       struct bma4_dev bma;
-      struct bma4_accel_config accel_conf;   // Store the device configuration for later reference.
+      struct bma4_accel_config accel_conf; // Store the device configuration for later reference.
+      struct bma4_fifo_frame fifo_frame;
+      int16_t fifo[32][3] = {0};      
       bool isOk = false;
       bool isResetOk = false;
       DeviceTypes deviceType = DeviceTypes::Unknown;

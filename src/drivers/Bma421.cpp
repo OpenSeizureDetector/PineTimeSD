@@ -22,18 +22,17 @@ namespace {
   void user_delay(uint32_t period_us, void* /*intf_ptr*/) {
     nrf_delay_us(period_us);
   }
+
+  // Scale factors to convert accelerometer counts to milli-g
+  // from datasheet: https://files.pine64.org/doc/datasheet/pinetime/BST-BMA421-FL000.pdf
+  // The array index to use is stored in accel_conf.range
+  constexpr int16_t accelScaleFactors[] = {
+    [BMA4_ACCEL_RANGE_2G] = 1024, // LSB/g +/- 2g range
+    [BMA4_ACCEL_RANGE_4G] = 512,  // LSB/g +/- 4g range
+    [BMA4_ACCEL_RANGE_8G] = 256,  // LSB/g +/- 8g range
+    [BMA4_ACCEL_RANGE_16G] = 128  // LSB/g +/- 16g range
+  };
 }
-
-// Scale factors to convert accelerometer counts to milli-g
-// from datasheet: https://files.pine64.org/doc/datasheet/pinetime/BST-BMA421-FL000.pdf
-// The array index to use is stored in accel_conf.range
-const short Bma421::accelScaleFactors[] = {
-  1024,  // LSB/g +/- 2g range
-  512,   // LSB/g +/- 4g range 
-  256,   // LSB/g +/- 8g range
-  128    // LSB/g +/- 16g range
-};
-
 
 Bma421::Bma421(TwiMaster& twiMaster, uint8_t twiAddress) : twiMaster {twiMaster}, deviceAddress {twiAddress} {
   bma.intf = BMA4_I2C_INTF;
@@ -43,6 +42,7 @@ Bma421::Bma421(TwiMaster& twiMaster, uint8_t twiAddress) : twiMaster {twiMaster}
   bma.intf_ptr = this;
   bma.delay_us = user_delay;
   bma.read_write_len = 16;
+  bma.resolution = 12;
 }
 
 void Bma421::Init() {
@@ -85,10 +85,20 @@ void Bma421::Init() {
   if (ret != BMA4_OK)
     return;
 
+  // Configure FIFO
+  ret = bma4_set_fifo_config(BMA4_FIFO_ACCEL, 1, &bma);
+  if (ret != BMA4_OK)
+    return;
+
+  fifo_frame.data = (uint8_t*) &fifo;
+  fifo_frame.length = sizeof(fifo);
+  fifo_frame.fifo_data_enable = BMA4_FIFO_A_ENABLE;
+  fifo_frame.fifo_header_enable = 0;
+
   accel_conf.odr = BMA4_OUTPUT_DATA_RATE_25HZ;
   accel_conf.range = BMA4_ACCEL_RANGE_4G;
   accel_conf.bandwidth = BMA4_ACCEL_NORMAL_AVG4;
-  accel_conf.perf_mode = BMA4_CIC_AVG_MODE;
+  accel_conf.perf_mode = BMA4_CONTINUOUS_MODE;
   ret = bma4_set_accel_config(&accel_conf, &bma);
   if (ret != BMA4_OK)
     return;
@@ -112,27 +122,40 @@ void Bma421::Write(uint8_t registerAddress, const uint8_t* data, size_t size) {
 Bma421::Values Bma421::Process() {
   if (not isOk)
     return {};
-  struct bma4_accel rawData;
-  struct bma4_accel data;
-  bma4_read_accel_xyz(&rawData, &bma);
-
-  data.x = 1000 * rawData.x / accelScaleFactors[accel_conf.range];
-  data.y = 1000 * rawData.y / accelScaleFactors[accel_conf.range];
-  data.z = 1000 * rawData.z / accelScaleFactors[accel_conf.range];
 
   uint32_t steps = 0;
   bma423_step_counter_output(&steps, &bma);
 
-  int32_t temperature;
+  int32_t temperature = 0;
   bma4_get_temperature(&temperature, BMA4_DEG, &bma);
   temperature = temperature / 1000;
 
   uint8_t activity = 0;
   bma423_activity_output(&activity, &bma);
 
-  // X and Y axis are swapped because of the way the sensor is mounted in the PineTime
-  return {steps, data.y, data.x, data.z};
+  // Read entire FIFO into buffer fifo_frame
+  bma4_read_fifo_data(&fifo_frame, &bma);
+  // Decode FIFO frames in-place sequentially
+  uint16_t nFifo = 18; // Should be about 20 (200 Hz ODR / 10 Hz main loop)
+  bma4_extract_accel((bma4_accel*) fifo, &nFifo, &fifo_frame, &bma);
+
+    // Swap X and Y order because of the way the sensor is mounted in the PineTime
+    // Then scale the measured ADC counts to units of 'binary milli-g'
+    // where 1g = 1024 'binary milli-g' units.
+    // See https://github.com/InfiniTimeOrg/InfiniTime/pull/1950 for
+    // discussion of why we opted for scaling to 1024 rather than 1000.
+  for (uint8_t i = 0; i < nFifo; i++) {
+    int16_t swap = fifo[i][0];
+    fifo[i][0] = fifo[i][1];
+    fifo[i][1] = swap;
+    for (uint8_t j = 0; j < 3; j++)
+      fifo[i][j] = 1024 * fifo[i][j] / accelScaleFactors[accel_conf.range];
+  }
+
+  // Return the latest accelerometer reading and also all the data in the fifo buffer.
+  return {steps, (int16_t *)fifo, nFifo};
 }
+
 
 bool Bma421::IsOk() const {
   return isOk;

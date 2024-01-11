@@ -18,7 +18,7 @@ namespace Pinetime {
         BMA425,
       };
 
-      void Update(int16_t x, int16_t y, int16_t z, uint32_t nbSteps);
+      void Update(int16_t *fifo, uint16_t nFifo, uint32_t nbSteps);
 
       int16_t X() const {
         return x;

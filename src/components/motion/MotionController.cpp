@@ -35,14 +35,21 @@ namespace {
   }
 }
 
-void MotionController::Update(int16_t x, int16_t y, int16_t z, uint32_t nbSteps) {
+void MotionController::Update(int16_t *fifo, uint16_t nFifo,  uint32_t nbSteps) {
   if (this->nbSteps != nbSteps && service != nullptr) {
     service->OnNewStepCountValue(nbSteps);
   }
 
-  if (service != nullptr && (this->x != x || yHistory[0] != y || zHistory[0] != z)) {
-    service->OnNewMotionValues(x, y, z);
+  // Just for now we only use the last value in the FIFO buffer
+  int16_t x = fifo[nFifo-3];
+  int16_t y = fifo[nFifo-2];
+  int16_t z = fifo[nFifo-1];
+
+
+  if (service != nullptr ) {  //&& (this->x != x || yHistory[0] != y || zHistory[0] != z)) {
+    service->OnNewMotionValues(fifo, nFifo);
   }
+
 
   lastTime = time;
   time = xTaskGetTickCount();

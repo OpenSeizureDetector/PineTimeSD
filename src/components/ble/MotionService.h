@@ -19,7 +19,7 @@ namespace Pinetime {
       void Init();
       int OnStepCountRequested(uint16_t attributeHandle, ble_gatt_access_ctxt* context);
       void OnNewStepCountValue(uint32_t stepCount);
-      void OnNewMotionValues(int16_t x, int16_t y, int16_t z);
+      void OnNewMotionValues(int16_t *fifo, uint16_t nFifo);
 
       void SubscribeNotification(uint16_t attributeHandle);
       void UnsubscribeNotification(uint16_t attributeHandle);
@@ -32,6 +32,8 @@ namespace Pinetime {
 
       struct ble_gatt_chr_def characteristicDefinition[3];
       struct ble_gatt_svc_def serviceDefinition[2];
+      int16_t *data;
+      int16_t nData;
 
       uint16_t stepCountHandle;
       uint16_t motionValuesHandle;

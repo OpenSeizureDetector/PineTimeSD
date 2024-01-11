@@ -430,7 +430,7 @@ void SystemTask::UpdateMotion() {
 
   auto motionValues = motionSensor.Process();
 
-  motionController.Update(motionValues.x, motionValues.y, motionValues.z, motionValues.steps);
+  motionController.Update(motionValues.fifo, motionValues.nFifo, motionValues.steps);
 
   if (settingsController.GetNotificationStatus() != Controllers::Settings::Notification::Sleep) {
     if ((settingsController.isWakeUpModeOn(Pinetime::Controllers::Settings::WakeUpMode::RaiseWrist) &&

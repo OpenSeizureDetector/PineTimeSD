@@ -62,15 +62,19 @@ void MotionService::Init() {
 }
 
 int MotionService::OnStepCountRequested(uint16_t attributeHandle, ble_gatt_access_ctxt* context) {
+  int res = 0;
   if (attributeHandle == stepCountHandle) {
     NRF_LOG_INFO("Motion-stepcount : handle = %d", stepCountHandle);
     uint32_t buffer = motionController.NbSteps();
 
-    int res = os_mbuf_append(context->om, &buffer, 4);
+    res = os_mbuf_append(context->om, &buffer, 4);
     return (res == 0) ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
   } else if (attributeHandle == motionValuesHandle) {
-    int res = os_mbuf_append(context->om, accBuf, accBufSize * sizeof(int16_t));
-    accBufIdx = 0;  // Re-start filling the buffer.
+    if (this->nData < 3) {
+      res = os_mbuf_append(context->om, this->data, nData * 3 * sizeof(int16_t));
+    } else {
+      res = os_mbuf_append(context->om, this->data, 3 * 3 * sizeof(int16_t));
+    }
     return (res == 0) ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
   }
   return 0;
@@ -92,38 +96,19 @@ void MotionService::OnNewStepCountValue(uint32_t stepCount) {
   ble_gattc_notify_custom(connectionHandle, stepCountHandle, om);
 }
 
-void MotionService::OnNewMotionValues(int16_t x, int16_t y, int16_t z) {
-  // If the buffer is full, do not add any more to it (we lose data until it is read).
-  if (accBufIdx > accBufSize - 3)
-    return;
-
-  accBuf[accBufIdx] = x;
-  //accBuf[accBufIdx] = testVal; //x;   FIXME
-  testVal++;
-  accBufIdx++;
-  accBuf[accBufIdx] = y;
-  //accBuf[accBufIdx] = testVal; //y;   FIXME
-  testVal++;
-  accBufIdx++;
-  accBuf[accBufIdx] = z;
-  //accBuf[accBufIdx] = testVal; //z;    FIXME
-  //testVal++;
-  accBufIdx++;
-  //if (testVal > 65532) testVal = 0;
-
-  // If the buffer is not full, just return after storing the data.
-  if (accBufIdx < accBufSize)
-    return;
-
-  // Once we have filled up accBuf, send a notificaton to subscribers that new data is ready, if we have any
-  // subscribers
+void MotionService::OnNewMotionValues(int16_t *fifo, uint16_t nFifo) {
   if (!motionValuesNoficationEnabled)
     return;
+
+  //auto* om = ble_hs_mbuf_from_flat(fifo, 3 * nFifo * sizeof(int16_t));
+  this->data = fifo;
+  this->nData = nFifo;
 
   uint16_t connectionHandle = nimble.connHandle();
   if (connectionHandle == 0 || connectionHandle == BLE_HS_CONN_HANDLE_NONE) {
     return;
   }
+  //ble_gattc_notify_custom(connectionHandle, motionValuesHandle, om);
   ble_gattc_notify(connectionHandle, motionValuesHandle);
 }
 
