@@ -24,8 +24,6 @@ namespace Pinetime {
       void SetScrollArea(uint16_t topFixedLines, uint16_t scrollLines, uint16_t bottomFixedLines);
       void SetScrollStartLine(uint16_t line);
 
-      void Sleep();
-      void Wakeup();
       bool GetNextBuffer(uint8_t** buffer, size_t& size) override;
       void pixel_draw(uint8_t x, uint8_t y, uint16_t color);
 
