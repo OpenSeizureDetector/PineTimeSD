@@ -25,6 +25,9 @@ void St7789::Init() {
 #ifndef DRIVER_DISPLAY_MIRROR
   DisplayInversionOn();
 #endif
+  PorchSet();
+  FrameRateNormalSet();
+  IdleFrameRateOff();
   NormalModeOn();
   SetVdv();
   PowerControl();
@@ -125,19 +128,35 @@ void St7789::IdleModeOff() {
   vTaskDelay(pdMS_TO_TICKS(10));
 }
 
-void St7789::FrameRateLow() {
-  WriteCommand(static_cast<uint8_t>(Commands::FrameRate));
+void St7789::PorchSet() {
+  WriteCommand(static_cast<uint8_t>(Commands::Porch));
+  WriteData(0x02);
+  WriteData(0x03);
+  WriteData(0x01);
+  WriteData(0xed);
+  WriteData(0xed);
+  vTaskDelay(pdMS_TO_TICKS(300));
+}
+
+void St7789::FrameRateNormalSet() {
+  WriteCommand(static_cast<uint8_t>(Commands::FrameRateNormal));
+  WriteData(0x0a);
+  vTaskDelay(pdMS_TO_TICKS(300));
+}
+
+void St7789::IdleFrameRateOn() {
+  WriteCommand(static_cast<uint8_t>(Commands::FrameRateIdle));
   WriteData(0x13);
   WriteData(0x1e);
   WriteData(0x1e);
   vTaskDelay(pdMS_TO_TICKS(300));
 }
 
-void St7789::FrameRateNormal() {
-  WriteCommand(static_cast<uint8_t>(Commands::FrameRate));
+void St7789::IdleFrameRateOff() {
+  WriteCommand(static_cast<uint8_t>(Commands::FrameRateIdle));
   WriteData(0x00);
-  WriteData(0x0f);
-  WriteData(0x0f);
+  WriteData(0x0a);
+  WriteData(0x0a);
   vTaskDelay(pdMS_TO_TICKS(300));
 }
 
@@ -236,13 +255,13 @@ void St7789::HardwareReset() {
 
 void St7789::LowPowerOn() {
   IdleModeOn();
-  FrameRateLow();
+  IdleFrameRateOn();
   NRF_LOG_INFO("[LCD] Low power mode");
 }
 
 void St7789::LowPowerOff() {
   IdleModeOff();
-  FrameRateNormal();
+  IdleFrameRateOff();
   NRF_LOG_INFO("[LCD] Normal power mode");
 }
 

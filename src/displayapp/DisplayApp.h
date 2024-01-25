@@ -139,7 +139,7 @@ namespace Pinetime {
       TickType_t CalculateSleepTime();
       TickType_t alwaysOnTickCount;
       TickType_t alwaysOnStartTime;
-      static constexpr uint32_t alwaysOnRefreshPeriod = 1000 / (40 / 8);
+      static constexpr uint32_t alwaysOnRefreshPeriod = 1000 / 2;
     };
   }
 }
