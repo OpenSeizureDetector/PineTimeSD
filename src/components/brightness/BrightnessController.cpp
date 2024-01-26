@@ -3,8 +3,6 @@
 #include "displayapp/screens/Symbols.h"
 #include "drivers/PinMap.h"
 
-#include "nrf_pwm.h"
-
 using namespace Pinetime::Controllers;
 
 void BrightnessController::Init() {
@@ -16,30 +14,108 @@ void BrightnessController::Init() {
   nrf_gpio_pin_clear(PinMap::LcdBacklightMedium);
   nrf_gpio_pin_clear(PinMap::LcdBacklightHigh);
 
-  static nrf_pwm_sequence_t seq;
-
-  seq.values.p_common = pwmSequence;
-  seq.length = 1;
-  seq.repeats = 0;
-  seq.end_delay = 0;
-
-  uint32_t out_pins[] = {PinMap::LcdBacklightHigh, PinMap::LcdBacklightMedium, PinMap::LcdBacklightLow, NRF_PWM_PIN_NOT_CONNECTED};
-
-  nrf_pwm_pins_set(NRF_PWM0, out_pins);
-  nrf_pwm_enable(NRF_PWM0);
-  // With 8 MHz and 10000 reload timer PWM frequency is 712 Hz
-  nrf_pwm_configure(NRF_PWM0, NRF_PWM_CLK_8MHz, NRF_PWM_MODE_UP, 10000);
-  nrf_pwm_loop_set(NRF_PWM0, 0);
-  nrf_pwm_decoder_set(NRF_PWM0, NRF_PWM_LOAD_COMMON, NRF_PWM_STEP_AUTO);
-  nrf_pwm_sequence_set(NRF_PWM0, 0, &seq);
-  nrf_pwm_task_trigger(NRF_PWM0, NRF_PWM_TASK_SEQSTART0);
-
+  timer = NRFX_TIMER_INSTANCE(1);
+  nrfx_timer_config_t timer_cfg = {.frequency = NRF_TIMER_FREQ_1MHz,
+                                   .mode = NRF_TIMER_MODE_TIMER,
+                                   .bit_width = NRF_TIMER_BIT_WIDTH_32,
+                                   .interrupt_priority = 6,
+                                   .p_context = nullptr};
+  // callback will never fire, use empty expression
+  APP_ERROR_CHECK(nrfx_timer_init(&timer, &timer_cfg, [](auto, auto) {
+  }));
+  nrfx_timer_extended_compare(&timer,
+                              NRF_TIMER_CC_CHANNEL1,
+                              nrfx_timer_us_to_ticks(&timer, 1000),
+                              NRF_TIMER_SHORT_COMPARE1_CLEAR_MASK,
+                              false);
   Set(level);
 };
 
-void BrightnessController::setPwm(uint16_t val) {
-  pwmSequence[0] = val;
-  nrf_pwm_task_trigger(NRF_PWM0, NRF_PWM_TASK_SEQSTART0);
+void BrightnessController::applyBrightness(uint16_t val) {
+  uint8_t pin;
+  if (val > 2000) {
+    val -= 2000;
+    pin = PinMap::LcdBacklightHigh;
+  } else if (val > 1000) {
+    val -= 1000;
+    pin = PinMap::LcdBacklightMedium;
+  } else {
+    pin = PinMap::LcdBacklightLow;
+  }
+  if (val == 1000 || val == 0) {
+    if (lastPin != UNSET) {
+      nrfx_timer_disable(&timer);
+      nrfx_timer_clear(&timer);
+      nrf_ppi_channel_disable(ppi_backlight_off);
+      nrf_ppi_channel_disable(ppi_backlight_on);
+      nrfx_gpiote_out_uninit(lastPin);
+      nrf_gpio_cfg_output(lastPin);
+    }
+    lastPin = UNSET;
+    if (val == 0) {
+      nrf_gpio_pin_set(pin);
+    } else {
+      nrf_gpio_pin_clear(pin);
+    }
+  } else {
+    uint32_t newThreshold = nrfx_timer_us_to_ticks(&timer, val);
+    if (lastPin != pin) {
+      if (lastPin != UNSET) {
+        nrfx_timer_disable(&timer);
+        nrfx_timer_clear(&timer);
+        nrf_ppi_channel_disable(ppi_backlight_off);
+        nrf_ppi_channel_disable(ppi_backlight_on);
+        nrfx_gpiote_out_uninit(lastPin);
+        nrf_gpio_cfg_output(lastPin);
+      }
+      nrfx_gpiote_out_config_t gpiote_cfg = {.action = NRF_GPIOTE_POLARITY_TOGGLE,
+                                             .init_state = NRF_GPIOTE_INITIAL_VALUE_LOW,
+                                             .task_pin = true};
+      APP_ERROR_CHECK(nrfx_gpiote_out_init(pin, &gpiote_cfg));
+      nrfx_gpiote_out_task_enable(pin);
+      nrf_ppi_channel_endpoint_setup(ppi_backlight_off,
+                                     nrfx_timer_event_address_get(&timer, NRF_TIMER_EVENT_COMPARE0),
+                                     nrfx_gpiote_out_task_addr_get(pin));
+      nrf_ppi_channel_endpoint_setup(ppi_backlight_on,
+                                     nrfx_timer_event_address_get(&timer, NRF_TIMER_EVENT_COMPARE1),
+                                     nrfx_gpiote_out_task_addr_get(pin));
+      nrf_ppi_channel_enable(ppi_backlight_off);
+      nrf_ppi_channel_enable(ppi_backlight_on);
+    } else {
+      // pause the timer, check where it is before changing the threshold
+      // as the event always toggles the pin if we have already triggered CC0
+      // and then move CC0 into the future without triggering CC1 first,
+      // the modulation will be inverted (e.g on 100us off 900us becomes off 100us on 900us)
+      nrfx_timer_pause(&timer);
+      uint32_t currentCycle = nrfx_timer_capture(&timer, NRF_TIMER_CC_CHANNEL2);
+      uint32_t oldThreshold = nrfx_timer_capture_get(&timer, NRF_TIMER_CC_CHANNEL0);
+      // if the new threshold now in future and we have triggered old, switch bl back on
+      if (currentCycle >= oldThreshold && newThreshold > currentCycle) {
+        nrfx_gpiote_out_task_trigger(pin);
+      }
+
+    }
+    nrfx_timer_compare(&timer, NRF_TIMER_CC_CHANNEL0, newThreshold, false);
+    if (lastPin != pin) {
+      nrfx_timer_enable(&timer);
+    } else {
+      nrfx_timer_resume(&timer);
+    }
+    lastPin = pin;
+  }
+  switch (pin) {
+    case PinMap::LcdBacklightHigh:
+      nrf_gpio_pin_clear(PinMap::LcdBacklightLow);
+      nrf_gpio_pin_clear(PinMap::LcdBacklightMedium);
+      break;
+    case PinMap::LcdBacklightMedium:
+      nrf_gpio_pin_clear(PinMap::LcdBacklightLow);
+      nrf_gpio_pin_set(PinMap::LcdBacklightHigh);
+      break;
+    case PinMap::LcdBacklightLow:
+      nrf_gpio_pin_set(PinMap::LcdBacklightMedium);
+      nrf_gpio_pin_set(PinMap::LcdBacklightHigh);
+  }
 };
 
 void BrightnessController::Set(BrightnessController::Levels level) {
@@ -47,19 +123,19 @@ void BrightnessController::Set(BrightnessController::Levels level) {
   switch (level) {
     default:
     case Levels::High:
-      setPwm(10000);
+      applyBrightness(3000);
       break;
     case Levels::Medium:
-      setPwm(3800);
+      applyBrightness(2000);
       break;
     case Levels::Low:
-      setPwm(830);
+      applyBrightness(1000);
       break;
     case Levels::Lowest:
-      setPwm(70);
+      applyBrightness(100);
       break;
     case Levels::Off:
-      setPwm(0);
+      applyBrightness(0);
       break;
   }
 }

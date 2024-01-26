@@ -102,7 +102,9 @@ void SystemTask::Work() {
   watchdog.Setup(7, Drivers::Watchdog::SleepBehaviour::Run, Drivers::Watchdog::HaltBehaviour::Pause);
   watchdog.Start();
   NRF_LOG_INFO("Last reset reason : %s", Pinetime::Drivers::ResetReasonToString(watchdog.GetResetReason()));
-  APP_GPIOTE_INIT(2);
+  if (!nrfx_gpiote_is_init()) {
+    nrfx_gpiote_init();
+  }
 
   spi.Init();
   spiNorFlash.Init();
@@ -410,8 +412,6 @@ void SystemTask::Work() {
     }
 
     monitor.Process();
-    uint32_t systick_counter = nrf_rtc_counter_get(portNRF_RTC_REG);
-    dateTimeController.UpdateTime(systick_counter);
     NoInit_BackUpTime = dateTimeController.CurrentDateTime();
     if (nrf_gpio_pin_read(PinMap::Button) == 0) {
       watchdog.Reload();

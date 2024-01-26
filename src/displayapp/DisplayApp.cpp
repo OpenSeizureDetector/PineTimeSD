@@ -155,6 +155,32 @@ void DisplayApp::InitHw() {
   lcd.Init();
 }
 
+TickType_t DisplayApp::CalculateSleepTime() {
+  TickType_t ticksElapsed = xTaskGetTickCount() - alwaysOnStartTime;
+  TickType_t elapsedTarget = ROUNDED_DIV((configTICK_RATE_HZ/8) * alwaysOnTickCount * alwaysOnRefreshPeriod, 1000/8);
+  // ROUNDED_DIV overflows when numerator + denominator / 2 > uint32 max
+  // in this case around 9 hours
+  constexpr TickType_t overflowTick = (UINT32_MAX - (1000/16)) / ((configTICK_RATE_HZ/8) * alwaysOnRefreshPeriod);
+
+  // assumptions
+
+  // tick rate is multiple of 8
+  static_assert(configTICK_RATE_HZ % 8 == 0);
+  // local tick count will always wraparound before the system tick count does
+  // as a static assert we can use 64 bit ints and therefore dodge overflows
+  static_assert((uint64_t)overflowTick * (uint64_t)alwaysOnRefreshPeriod < (uint64_t)UINT32_MAX * (uint64_t)1000 / configTICK_RATE_HZ);
+
+  if (alwaysOnTickCount == overflowTick) {
+    alwaysOnTickCount = 0;
+    alwaysOnStartTime = xTaskGetTickCount();
+  }
+  if (elapsedTarget > ticksElapsed) {
+    return elapsedTarget - ticksElapsed;
+  } else {
+    return 0;
+  }
+}
+
 void DisplayApp::Refresh() {
   auto LoadPreviousScreen = [this]() {
     FullRefreshDirections returnDirection;
@@ -208,9 +234,18 @@ void DisplayApp::Refresh() {
         if (!currentScreen->IsRunning()) {
           LoadPreviousScreen();
         }
-        int lvglWaitTime = lv_task_handler();
-        // while in always on mode, throttle LVGL events to 4Hz
-        queueTimeout = std::max(lvglWaitTime, 250);
+        // check we've slept long enough
+        // might not be true if the loop received an event
+        // if not true, then wait that amount of time
+        queueTimeout = CalculateSleepTime();
+        if (queueTimeout == 0) {
+          lv_task_handler();
+          // drop frames that we've missed if the loop took way longer than expected to execute
+          while (queueTimeout == 0) {
+            alwaysOnTickCount += 1;
+            queueTimeout = CalculateSleepTime();
+          }
+        }
       } else {
         queueTimeout = portMAX_DELAY;
       }
@@ -253,6 +288,9 @@ void DisplayApp::Refresh() {
         if (settingsController.GetAlwaysOnDisplay()) {
           brightnessController.Set(Controllers::BrightnessController::Levels::Lowest);
           lcd.LowPowerOn();
+          // record idle entry time
+          alwaysOnTickCount = 0;
+          alwaysOnStartTime = xTaskGetTickCount();
         } else {
           brightnessController.Set(Controllers::BrightnessController::Levels::Off);
           lcd.Sleep();

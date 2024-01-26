@@ -45,7 +45,7 @@ namespace Pinetime {
        */
       void SetTimeZone(int8_t timezone, int8_t dst);
 
-      void UpdateTime(uint32_t systickCounter);
+      void UpdateTime(uint32_t systickCounter, bool forceUpdate);
 
       uint16_t Year() const {
         return 1900 + localTime.tm_year;
@@ -124,12 +124,10 @@ namespace Pinetime {
       static const char* MonthShortToStringLow(Months month);
       const char* DayOfWeekShortToStringLow() const;
 
-      std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> CurrentDateTime() const {
-        return currentDateTime;
-      }
+      std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> CurrentDateTime();
 
-      std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> UTCDateTime() const {
-        return currentDateTime - std::chrono::seconds((tzOffset + dstOffset) * 15 * 60);
+      std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> UTCDateTime() {
+        return CurrentDateTime() - std::chrono::seconds((tzOffset + dstOffset) * 15 * 60);
       }
 
       std::chrono::seconds Uptime() const {
