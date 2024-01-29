@@ -15,13 +15,13 @@ void BrightnessController::Init() {
   nrf_gpio_pin_clear(PinMap::LcdBacklightHigh);
 
   timer = NRFX_TIMER_INSTANCE(1);
-  nrfx_timer_config_t timer_cfg = {.frequency = NRF_TIMER_FREQ_1MHz,
-                                   .mode = NRF_TIMER_MODE_TIMER,
-                                   .bit_width = NRF_TIMER_BIT_WIDTH_32,
-                                   .interrupt_priority = 6,
-                                   .p_context = nullptr};
+  nrfx_timer_config_t timerCfg = {.frequency = NRF_TIMER_FREQ_1MHz,
+                                  .mode = NRF_TIMER_MODE_TIMER,
+                                  .bit_width = NRF_TIMER_BIT_WIDTH_32,
+                                  .interrupt_priority = 6,
+                                  .p_context = nullptr};
   // callback will never fire, use empty expression
-  APP_ERROR_CHECK(nrfx_timer_init(&timer, &timer_cfg, [](auto, auto) {
+  APP_ERROR_CHECK(nrfx_timer_init(&timer, &timerCfg, [](auto, auto) {
   }));
   nrfx_timer_extended_compare(&timer,
                               NRF_TIMER_CC_CHANNEL1,
@@ -46,8 +46,8 @@ void BrightnessController::applyBrightness(uint16_t val) {
     if (lastPin != UNSET) {
       nrfx_timer_disable(&timer);
       nrfx_timer_clear(&timer);
-      nrf_ppi_channel_disable(ppi_backlight_off);
-      nrf_ppi_channel_disable(ppi_backlight_on);
+      nrf_ppi_channel_disable(ppiBacklightOff);
+      nrf_ppi_channel_disable(ppiBacklightOn);
       nrfx_gpiote_out_uninit(lastPin);
       nrf_gpio_cfg_output(lastPin);
     }
@@ -63,24 +63,24 @@ void BrightnessController::applyBrightness(uint16_t val) {
       if (lastPin != UNSET) {
         nrfx_timer_disable(&timer);
         nrfx_timer_clear(&timer);
-        nrf_ppi_channel_disable(ppi_backlight_off);
-        nrf_ppi_channel_disable(ppi_backlight_on);
+        nrf_ppi_channel_disable(ppiBacklightOff);
+        nrf_ppi_channel_disable(ppiBacklightOn);
         nrfx_gpiote_out_uninit(lastPin);
         nrf_gpio_cfg_output(lastPin);
       }
-      nrfx_gpiote_out_config_t gpiote_cfg = {.action = NRF_GPIOTE_POLARITY_TOGGLE,
-                                             .init_state = NRF_GPIOTE_INITIAL_VALUE_LOW,
-                                             .task_pin = true};
-      APP_ERROR_CHECK(nrfx_gpiote_out_init(pin, &gpiote_cfg));
+      nrfx_gpiote_out_config_t gpioteCfg = {.action = NRF_GPIOTE_POLARITY_TOGGLE,
+                                            .init_state = NRF_GPIOTE_INITIAL_VALUE_LOW,
+                                            .task_pin = true};
+      APP_ERROR_CHECK(nrfx_gpiote_out_init(pin, &gpioteCfg));
       nrfx_gpiote_out_task_enable(pin);
-      nrf_ppi_channel_endpoint_setup(ppi_backlight_off,
+      nrf_ppi_channel_endpoint_setup(ppiBacklightOff,
                                      nrfx_timer_event_address_get(&timer, NRF_TIMER_EVENT_COMPARE0),
                                      nrfx_gpiote_out_task_addr_get(pin));
-      nrf_ppi_channel_endpoint_setup(ppi_backlight_on,
+      nrf_ppi_channel_endpoint_setup(ppiBacklightOn,
                                      nrfx_timer_event_address_get(&timer, NRF_TIMER_EVENT_COMPARE1),
                                      nrfx_gpiote_out_task_addr_get(pin));
-      nrf_ppi_channel_enable(ppi_backlight_off);
-      nrf_ppi_channel_enable(ppi_backlight_on);
+      nrf_ppi_channel_enable(ppiBacklightOff);
+      nrf_ppi_channel_enable(ppiBacklightOn);
     } else {
       // pause the timer, check where it is before changing the threshold
       // as the event always toggles the pin if we have already triggered CC0

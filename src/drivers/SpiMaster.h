@@ -60,7 +60,7 @@ namespace Pinetime {
       volatile size_t currentBufferSize = 0;
       volatile TaskHandle_t taskToNotify;
       SemaphoreHandle_t mutex = nullptr;
-      constexpr static nrf_ppi_channel_t workaround_ppi = NRF_PPI_CHANNEL0;
+      static constexpr nrf_ppi_channel_t workaroundPpi = NRF_PPI_CHANNEL0;
       bool workaroundActive = false;
     };
   }

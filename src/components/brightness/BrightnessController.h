@@ -31,8 +31,8 @@ namespace Pinetime {
       // https://github.com/InfiniTimeOrg/InfiniTime/blob/034d83fe6baf1ab3875a34f8cee387e24410a824/src/libs/mynewt-nimble/nimble/drivers/nrf52/src/ble_phy.c#L53
       // spimaster uses ppi 0 for an erratum workaround
       // channel 1, 2 should be free to use
-      nrf_ppi_channel_t ppi_backlight_on = NRF_PPI_CHANNEL1;
-      nrf_ppi_channel_t ppi_backlight_off = NRF_PPI_CHANNEL2;
+      static constexpr nrf_ppi_channel_t ppiBacklightOn = NRF_PPI_CHANNEL1;
+      static constexpr nrf_ppi_channel_t ppiBacklightOff = NRF_PPI_CHANNEL2;
 
       void applyBrightness(uint16_t val);
     };

@@ -96,15 +96,19 @@ bool SpiMaster::Init() {
 
 void SpiMaster::SetupWorkaroundForErratum58() {
   nrfx_gpiote_pin_t pin = spiBaseAddress->PSEL.SCK;
-  nrfx_gpiote_in_config_t gpiote_cfg = {.sense = NRF_GPIOTE_POLARITY_TOGGLE, .pull = NRF_GPIO_PIN_NOPULL, .is_watcher = false, .hi_accuracy = true, .skip_gpio_setup = true};
+  nrfx_gpiote_in_config_t gpioteCfg = {.sense = NRF_GPIOTE_POLARITY_TOGGLE,
+                                       .pull = NRF_GPIO_PIN_NOPULL,
+                                       .is_watcher = false,
+                                       .hi_accuracy = true,
+                                       .skip_gpio_setup = true};
   if (!workaroundActive) {
     // Create an event when SCK toggles.
-    APP_ERROR_CHECK(nrfx_gpiote_in_init(pin, &gpiote_cfg, NULL));
+    APP_ERROR_CHECK(nrfx_gpiote_in_init(pin, &gpioteCfg, NULL));
     nrfx_gpiote_in_event_enable(pin, false);
 
     // Stop the spim instance when SCK toggles.
-    nrf_ppi_channel_endpoint_setup(workaround_ppi, nrfx_gpiote_in_event_addr_get(pin), spiBaseAddress->TASKS_STOP);
-    nrf_ppi_channel_enable(workaround_ppi);
+    nrf_ppi_channel_endpoint_setup(workaroundPpi, nrfx_gpiote_in_event_addr_get(pin), spiBaseAddress->TASKS_STOP);
+    nrf_ppi_channel_enable(workaroundPpi);
   }
 
   spiBaseAddress->EVENTS_END = 0;
@@ -120,7 +124,7 @@ void SpiMaster::DisableWorkaroundForErratum58() {
   nrfx_gpiote_pin_t pin = spiBaseAddress->PSEL.SCK;
   if (workaroundActive) {
     nrfx_gpiote_in_uninit(pin);
-    nrf_ppi_channel_disable(workaround_ppi);
+    nrf_ppi_channel_disable(workaroundPpi);
   }
   spiBaseAddress->EVENTS_END = 0;
 
