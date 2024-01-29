@@ -93,7 +93,6 @@ void BrightnessController::applyBrightness(uint16_t val) {
       if (currentCycle >= oldThreshold && newThreshold > currentCycle) {
         nrfx_gpiote_out_task_trigger(pin);
       }
-
     }
     nrfx_timer_compare(&timer, NRF_TIMER_CC_CHANNEL0, newThreshold, false);
     if (lastPin != pin) {

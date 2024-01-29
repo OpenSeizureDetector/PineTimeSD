@@ -157,10 +157,10 @@ void DisplayApp::InitHw() {
 
 TickType_t DisplayApp::CalculateSleepTime() {
   TickType_t ticksElapsed = xTaskGetTickCount() - alwaysOnStartTime;
-  TickType_t elapsedTarget = ROUNDED_DIV((configTICK_RATE_HZ/8) * alwaysOnTickCount * alwaysOnRefreshPeriod, 1000/8);
+  TickType_t elapsedTarget = ROUNDED_DIV((configTICK_RATE_HZ / 8) * alwaysOnTickCount * alwaysOnRefreshPeriod, 1000 / 8);
   // ROUNDED_DIV overflows when numerator + denominator / 2 > uint32 max
   // in this case around 9 hours
-  constexpr TickType_t overflowTick = (UINT32_MAX - (1000/16)) / ((configTICK_RATE_HZ/8) * alwaysOnRefreshPeriod);
+  constexpr TickType_t overflowTick = (UINT32_MAX - (1000 / 16)) / ((configTICK_RATE_HZ / 8) * alwaysOnRefreshPeriod);
 
   // assumptions
 
@@ -168,7 +168,7 @@ TickType_t DisplayApp::CalculateSleepTime() {
   static_assert(configTICK_RATE_HZ % 8 == 0);
   // local tick count will always wraparound before the system tick count does
   // as a static assert we can use 64 bit ints and therefore dodge overflows
-  static_assert((uint64_t)overflowTick * (uint64_t)alwaysOnRefreshPeriod < (uint64_t)UINT32_MAX * (uint64_t)1000 / configTICK_RATE_HZ);
+  static_assert((uint64_t) overflowTick * (uint64_t) alwaysOnRefreshPeriod < (uint64_t) UINT32_MAX * (uint64_t) 1000 / configTICK_RATE_HZ);
 
   if (alwaysOnTickCount == overflowTick) {
     alwaysOnTickCount = 0;
