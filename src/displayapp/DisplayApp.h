@@ -135,6 +135,11 @@ namespace Pinetime {
       Utility::StaticStack<FullRefreshDirections, returnAppStackSize> appStackDirections;
 
       bool isDimmed = false;
+
+      TickType_t CalculateSleepTime();
+      TickType_t alwaysOnTickCount;
+      TickType_t alwaysOnStartTime;
+      static constexpr uint32_t alwaysOnRefreshPeriod = 1000 / 2;
     };
   }
 }

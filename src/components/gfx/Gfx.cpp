@@ -124,14 +124,6 @@ void Gfx::pixel_draw(uint8_t x, uint8_t y, uint16_t color) {
   lcd.DrawPixel(x, y, color);
 }
 
-void Gfx::Sleep() {
-  lcd.Sleep();
-}
-
-void Gfx::Wakeup() {
-  lcd.Wakeup();
-}
-
 void Gfx::SetBackgroundColor(uint16_t color) {
   for (int i = 0; i < width; i++) {
     buffer[i] = color;
