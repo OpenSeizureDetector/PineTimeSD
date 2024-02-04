@@ -47,6 +47,7 @@ namespace Pinetime {
 
     enum class WatchFace : uint8_t {
       Digital,
+      Osd,
       Analog,
       PineTimeStyle,
       Terminal,
