@@ -8,3 +8,5 @@ So we only actually use two levels of version numbers for PineTimeSD and ignore 
   - V230.0.2 
     - Added allways on dislay from https://github.com/InfiniTimeOrg/InfiniTime/pull/1869
     - Added OSD Watch face to make it clear it is OSD that is running rather than infinitime.
+    - Changed BLE Device name to PineTimeSD to distinguish it from stock InfiniTime firmware
+    - Starts heart rate sensor automatically on start-up

@@ -144,8 +144,11 @@ void SystemTask::Work() {
   displayApp.Start(bootError);
 
   heartRateSensor.Init();
-  heartRateSensor.Disable();
+  //heartRateSensor.Disable();
+  // Start the heart rate sensor automatically
+  heartRateSensor.Enable();
   heartRateApp.Start();
+  heartRateApp.PushMessage(Pinetime::Applications::HeartRateTask::Messages::StartMeasurement);
 
   buttonHandler.Init(this);
 
