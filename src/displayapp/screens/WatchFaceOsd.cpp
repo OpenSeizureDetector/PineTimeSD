@@ -168,7 +168,8 @@ void WatchFaceOsd::Refresh() {
     lv_obj_realign(stepIcon);
   }
 
-  lv_label_set_text_fmt(label_osdStatus,"%1d - %s", 
+  lv_label_set_text_fmt(label_osdStatus,"%ld: %1d - %s", 
+        (xTaskGetTickCount() - motionController.osdStatusTime)/1024,
         motionController.osdStatus, 
         status2Str(motionController.osdStatus));
 

@@ -88,6 +88,7 @@ int MotionService::OnStepCountRequested(uint16_t attributeHandle, ble_gatt_acces
     int8_t statusVal = -1;
     res = os_mbuf_copydata(context->om, 0, 1, &statusVal);
     motionController.osdStatus = statusVal;
+    motionController.osdStatusTime = xTaskGetTickCount();
     return res;
   }
   return 0;

@@ -68,6 +68,12 @@ void MotionController::Update(int16_t *fifo, uint16_t nFifo,  uint32_t nbSteps) 
     currentTripSteps += deltaSteps;
   }
   this->nbSteps = nbSteps;
+
+  // If the OSD status has not been updated by the phone within 30 seconds,
+  // show a fault condition.
+  if ((xTaskGetTickCount() - osdStatusTime)>30000) {
+    osdStatus = 4;  
+  }
 }
 
 MotionController::AccelStats MotionController::GetAccelStats() const {
@@ -149,6 +155,7 @@ void MotionController::Init(Pinetime::Drivers::Bma421::DeviceTypes types) {
       break;
   }
   osdStatus = 0x81;
+  osdStatusTime = xTaskGetTickCount();
 }
 
 void MotionController::SetService(Pinetime::Controllers::MotionService* service) {
