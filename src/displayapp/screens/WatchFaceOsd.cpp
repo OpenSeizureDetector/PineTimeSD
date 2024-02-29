@@ -74,6 +74,14 @@ WatchFaceOsd::WatchFaceOsd(Controllers::DateTime& dateTimeController,
   lv_label_set_text_static(stepIcon, Symbols::shoe);
   lv_obj_align(stepIcon, stepValue, LV_ALIGN_OUT_LEFT_MID, -5, 0);
 
+  label_osdStatus = lv_label_create(lv_scr_act(), nullptr);
+  lv_obj_set_style_local_text_color(label_osdStatus, LV_LABEL_PART_MAIN, LV_STATE_DEFAULT, lv_color_hex(0x999999));
+  //lv_obj_align(label_title, lv_scr_act(), LV_ALIGN_CENTER, 0, -50);
+  lv_obj_set_pos(label_osdStatus,5,50);
+  lv_label_set_text_static(label_osdStatus,"OsdStatus");
+
+
+
   taskRefresh = lv_task_create(RefreshTaskCallback, LV_DISP_DEF_REFR_PERIOD, LV_TASK_PRIO_MID, this);
   Refresh();
 }
@@ -159,4 +167,19 @@ void WatchFaceOsd::Refresh() {
     lv_obj_realign(stepValue);
     lv_obj_realign(stepIcon);
   }
+
+  lv_label_set_text_fmt(label_osdStatus,"%1d - %s", 
+        motionController.osdStatus, 
+        status2Str(motionController.osdStatus));
+
 }
+
+const char* WatchFaceOsd::status2Str(int8_t osdStatus) {
+  if (osdStatus >= NSTATUSSTRS-1)
+    osdStatus = -1;
+  if (osdStatus < -1)
+    osdStatus = -1;
+
+  return(statusStrs[osdStatus+1]);
+}
+

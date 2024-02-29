@@ -148,6 +148,7 @@ void MotionController::Init(Pinetime::Drivers::Bma421::DeviceTypes types) {
       this->deviceType = DeviceTypes::Unknown;
       break;
   }
+  osdStatus = 0x81;
 }
 
 void MotionController::SetService(Pinetime::Controllers::MotionService* service) {

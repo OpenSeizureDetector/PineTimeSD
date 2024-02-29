@@ -30,13 +30,14 @@ namespace Pinetime {
       NimbleController& nimble;
       Controllers::MotionController& motionController;
 
-      struct ble_gatt_chr_def characteristicDefinition[3];
+      struct ble_gatt_chr_def characteristicDefinition[4];
       struct ble_gatt_svc_def serviceDefinition[2];
       int16_t *data;
       int16_t nData;
 
       uint16_t stepCountHandle;
       uint16_t motionValuesHandle;
+      uint16_t osdStatusHandle;
       std::atomic_bool stepCountNoficationEnabled {false};
       std::atomic_bool motionValuesNoficationEnabled {false};
 

@@ -64,6 +64,7 @@ namespace Pinetime {
       
       Pinetime::Controllers::MotionService* GetService() const;
 
+      int8_t osdStatus;
 
     private:
       uint32_t nbSteps = 0;

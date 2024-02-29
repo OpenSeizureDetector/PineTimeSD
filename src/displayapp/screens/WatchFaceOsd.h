@@ -62,6 +62,7 @@ namespace Pinetime {
         lv_obj_t* stepValue;
         lv_obj_t* notificationIcon;
         lv_obj_t* label_title;
+        lv_obj_t* label_osdStatus;
 
         Controllers::DateTime& dateTimeController;
         Controllers::NotificationManager& notificationManager;
@@ -71,6 +72,15 @@ namespace Pinetime {
 
         lv_task_t* taskRefresh;
         Widgets::StatusIcons statusIcons;
+
+        // Strings to convert osdStatus value to text.   Add 1 onto status value to map
+        // correctly onto statusStrs[]; (-1=undefined, 0=ok etc);
+        // FIXME - we should really have an OsdController and OsdService to do this,
+        // but there is a lot less code to piggy back on MotionController.
+        #define NSTATUSSTRS 6
+        const char *statusStrs[NSTATUSSTRS] = { "UNDEFINED", "OK", "WARNING", "ALARM", "FALL", "FAULT" };
+
+        const char* status2Str(int8_t osdStatus);
       };
     }
 

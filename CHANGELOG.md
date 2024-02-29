@@ -12,3 +12,5 @@ So we only actually use two levels of version numbers for PineTimeSD and ignore 
     - Starts heart rate sensor automatically on start-up
   - V230.0.3
     - Changed device name back to InfiniTime so that GadgetBridge detects it to update firmware
+    V230.0.4
+    - Added OSD alarm Status to watch face
