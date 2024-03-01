@@ -77,8 +77,8 @@ namespace Pinetime {
         // correctly onto statusStrs[]; (-1=undefined, 0=ok etc);
         // FIXME - we should really have an OsdController and OsdService to do this,
         // but there is a lot less code to piggy back on MotionController.
-        #define NSTATUSSTRS 6
-        const char *statusStrs[NSTATUSSTRS] = { "UNDEFINED", "OK", "WARNING", "ALARM", "FALL", "FAULT" };
+        #define NSTATUSSTRS 9
+        const char *statusStrs[NSTATUSSTRS] = { "NOT STARTED", "0-OK", "1-WARNING", "2-**ALARM**", "3-FALL", "4-FAULT", "5-", "6-","7-ERR:COMMS"};
 
         const char* status2Str(int8_t osdStatus);
       };

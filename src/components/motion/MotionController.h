@@ -60,12 +60,12 @@ namespace Pinetime {
 
 
       void SetService(Pinetime::Controllers::MotionService* service);
-
       
       Pinetime::Controllers::MotionService* GetService() const;
 
       int8_t osdStatus;
       uint32_t osdStatusTime;
+      void CheckOsdTimeout();
 
     private:
       uint32_t nbSteps = 0;
@@ -96,6 +96,8 @@ namespace Pinetime {
       Utility::CircularBuffer<int16_t, histSize> yHistory = {};
       Utility::CircularBuffer<int16_t, histSize> zHistory = {};
       int32_t accumulatedSpeed = 0;
+      static constexpr uint32_t FAULT_TIMEOUT_TICKS = 30000;
+      static constexpr uint8_t ALARM_STATE_NETFAULT = 7;
 
       DeviceTypes deviceType = DeviceTypes::Unknown;
       Pinetime::Controllers::MotionService* service = nullptr;
