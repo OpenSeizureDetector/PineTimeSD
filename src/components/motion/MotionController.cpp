@@ -68,6 +68,15 @@ void MotionController::Update(int16_t *fifo, uint16_t nFifo,  uint32_t nbSteps) 
     currentTripSteps += deltaSteps;
   }
   this->nbSteps = nbSteps;
+
+}
+
+void MotionController::CheckOsdTimeout() {
+  // If the OSD status has not been updated by the phone within 30 seconds,
+  // show a fault condition.  This is called from WatchFaceOsd every update.
+  if ((xTaskGetTickCount() - osdStatusTime) > FAULT_TIMEOUT_TICKS) {
+    osdStatus = ALARM_STATE_NETFAULT;  
+  }
 }
 
 MotionController::AccelStats MotionController::GetAccelStats() const {
@@ -148,6 +157,8 @@ void MotionController::Init(Pinetime::Drivers::Bma421::DeviceTypes types) {
       this->deviceType = DeviceTypes::Unknown;
       break;
   }
+  osdStatus = 0x81;
+  osdStatusTime = xTaskGetTickCount();
 }
 
 void MotionController::SetService(Pinetime::Controllers::MotionService* service) {

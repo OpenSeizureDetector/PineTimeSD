@@ -20,11 +20,13 @@ namespace {
   constexpr ble_uuid128_t motionServiceUuid {BaseUuid()};
   constexpr ble_uuid128_t stepCountCharUuid {CharUuid(0x01, 0x00)};
   constexpr ble_uuid128_t motionValuesCharUuid {CharUuid(0x02, 0x00)};
+  constexpr ble_uuid128_t osdStatusCharUuid {CharUuid(0x78, 0x00)};    // 0x78 is 120 for OSD
 
   int MotionServiceCallback(uint16_t /*conn_handle*/, uint16_t attr_handle, struct ble_gatt_access_ctxt* ctxt, void* arg) {
     auto* motionService = static_cast<MotionService*>(arg);
     return motionService->OnStepCountRequested(attr_handle, ctxt);
   }
+
 }
 
 // TODO Refactoring - remove dependency to SystemTask
@@ -41,6 +43,12 @@ MotionService::MotionService(NimbleController& nimble, Controllers::MotionContro
                                .arg = this,
                                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
                                .val_handle = &motionValuesHandle},
+                              {.uuid = &osdStatusCharUuid.u,
+                               .access_cb = MotionServiceCallback,
+                               .arg = this,
+                               .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
+                               .val_handle = &osdStatusHandle},
+
                               {0}},
     serviceDefinition {
       {.type = BLE_GATT_SVC_TYPE_PRIMARY, .uuid = &motionServiceUuid.u, .characteristics = characteristicDefinition},
@@ -76,6 +84,12 @@ int MotionService::OnStepCountRequested(uint16_t attributeHandle, ble_gatt_acces
       res = os_mbuf_append(context->om, this->data, 3 * 3 * sizeof(int16_t));
     }
     return (res == 0) ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+  } else if (attributeHandle == osdStatusHandle) {
+    int8_t statusVal = -1;
+    res = os_mbuf_copydata(context->om, 0, 1, &statusVal);
+    motionController.osdStatus = statusVal;
+    motionController.osdStatusTime = xTaskGetTickCount();
+    return res;
   }
   return 0;
 }
