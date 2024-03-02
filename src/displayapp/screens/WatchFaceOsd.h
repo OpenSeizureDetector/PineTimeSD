@@ -46,7 +46,7 @@ namespace Pinetime {
         Utility::DirtyValue<bool> bleState {};
         Utility::DirtyValue<bool> bleRadioEnabled {};
         Utility::DirtyValue<std::chrono::time_point<std::chrono::system_clock, std::chrono::minutes>> currentDateTime {};
-        Utility::DirtyValue<uint32_t> stepCount {};
+        Utility::DirtyValue<uint32_t> batPercent {};
         Utility::DirtyValue<uint8_t> heartbeat {};
         Utility::DirtyValue<bool> heartbeatRunning {};
         Utility::DirtyValue<bool> notificationState {};
@@ -58,8 +58,7 @@ namespace Pinetime {
         lv_obj_t* label_date;
         lv_obj_t* heartbeatIcon;
         lv_obj_t* heartbeatValue;
-        lv_obj_t* stepIcon;
-        lv_obj_t* stepValue;
+        //lv_obj_t* batValue;
         lv_obj_t* notificationIcon;
         lv_obj_t* label_title;
         lv_obj_t* label_osdStatus;
@@ -78,7 +77,7 @@ namespace Pinetime {
         // FIXME - we should really have an OsdController and OsdService to do this,
         // but there is a lot less code to piggy back on MotionController.
         #define NSTATUSSTRS 9
-        const char *statusStrs[NSTATUSSTRS] = { "NOT STARTED", "0-OK", "1-WARNING", "2-**ALARM**", "3-FALL", "4-FAULT", "5-", "6-","7-ERR:COMMS"};
+        const char *statusStrs[NSTATUSSTRS] = { "NOT STARTED", "OK", "WARNING", "**ALARM**", "FALL", "FAULT", "5-", "6-","ERR:COMMS"};
 
         const char* status2Str(int8_t osdStatus);
       };
