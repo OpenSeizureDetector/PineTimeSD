@@ -373,7 +373,8 @@ namespace Pinetime {
 
         Controllers::BrightnessController::Levels brightLevel = Controllers::BrightnessController::Levels::Medium;
 
-        HeartRateBackgroundMeasurementInterval heartRateBackgroundMeasurementInterval = HeartRateBackgroundMeasurementInterval::Off;
+        // Make continuous heart rate the default for the OpenSeizureDetector version
+        HeartRateBackgroundMeasurementInterval heartRateBackgroundMeasurementInterval = HeartRateBackgroundMeasurementInterval::Continuous;
       };
 
       SettingsData settings;
