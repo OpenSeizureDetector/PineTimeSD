@@ -161,7 +161,7 @@ void NimbleController::StartAdvertising() {
   fields.uuids128 = &dfuServiceUuid;
   fields.num_uuids128 = 1;
   fields.uuids128_is_complete = 1;
-  fields.tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO;
+  fields.tx_pwr_lvl = 4; //BLE_HS_ADV_TX_PWR_LVL_AUTO;
 
   rsp_fields.name = reinterpret_cast<const uint8_t*>(deviceName);
   rsp_fields.name_len = strlen(deviceName);

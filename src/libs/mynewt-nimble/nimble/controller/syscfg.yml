@@ -45,7 +45,7 @@ syscfg.defs:
 
     BLE_LL_TX_PWR_DBM:
         description: 'Transmit power level.'
-        value: '4'
+        value: '0'
 
     BLE_LL_NUM_COMP_PKT_ITVL_MS:
         description: >
