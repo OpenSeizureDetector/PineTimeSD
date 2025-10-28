@@ -1,11 +1,16 @@
 {
   "title": "OpenSeizureDetector PineTime Watch Firmware Releases",
   "description": "The files in this folder are firmware files for the PineTime watch for use with OpenSeizureDetector.  They can be flashed onto the watch using the Gadgetbridge app",
-  "currentVersion": 0,
+  "recommendedFw": 0,
   "releases": [
      { "version": "0.7",
        "description": "Current production release - provides 3d accelerometer data at 25 Hz and heart rate data at 0.2 Hz",
        "fname": "pinetime-mcubuut-app-dfu-230.0.7.zip"
+     },
+     { "version": "0.8a",
+       "description": "dummy version for testing",
+       "fname": "pinetime-mcubuut-app-dfu-230.0.7.zip"
      }
+
   ]
 }
