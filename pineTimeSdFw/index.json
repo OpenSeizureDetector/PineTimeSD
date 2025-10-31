@@ -5,12 +5,15 @@
   "releases": [
      { "version": "0.7",
        "description": "Current production release - provides 3d accelerometer data at 25 Hz and heart rate data at 0.2 Hz",
-       "fname": "pinetime-mcubuut-app-dfu-230.0.7.zip"
+       "fname": "pinetime-mcuboot-app-dfu-230.0.7.zip"
      },
      { "version": "0.8a",
        "description": "dummy version for testing",
-       "fname": "pinetime-mcubuut-app-dfu-230.0.7.zip"
+       "fname": "pinetime-mcuboot-app-dfu-230.0.7.zip"
+     },
+     { "version": "InfiniTime_1.15",
+       "description": "InfiniTime V1.15 for recovery",
+       "fname": "pinetime-mcuboot-app-dfu-1.15.0.zip"
      }
-
   ]
 }
