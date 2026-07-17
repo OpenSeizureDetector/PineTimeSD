@@ -52,6 +52,35 @@ namespace Pinetime {
       // ALS detection factor
       static constexpr float alsFactor = 2.0f;
 
+      // #### ALNF FREQUENCY TRACKING CONSTANTS ####
+      // Forgetting factor for the autocorrelation tracking
+      static constexpr float alnfLambda = 0.99f; 
+
+      // Smoothing factor for the frequency estimation 
+      static constexpr float alnfGamma = 0.98f;
+
+      // Pole-zero contraction factor for the 
+      static constexpr float alnfAlpha = 0.90f; 
+
+      // #### COMB FILTER CONSTANTS ####
+      // Number of harmonic notches to apply. (3-4 is good from paper)
+      static constexpr int combN = 3;
+
+      // #### ALNF STATE VARIABLES ####
+      float g_t1 = 0.0f; // Delayed signal state g(t-1)
+      float g_t2 = 0.0f; // Delayed signal state g(t-2)
+      float Rg_0 = 1.0f; // Autocorrelation estimate (Rg(0)) init to 1.0 to prevent division by zero
+      float Rg_1 = 0.0f; // Autocorrelation estimate (Rg(1))
+      float k0_hat = 0.0f; // Smoothed adaptation parameter (tracks the HR frequency)
+
+
+      // #### COMB FILTER STATE VARIABLES ####
+      std::array<float, combN> comb_w1 = {0.0f, 0.0f, 0.0f};
+      std::array<float, combN> comb_w2 = {0.0f, 0.0f, 0.0f};
+
+      // Pole-zero contraction factor for the comb filter notches (controls width of harmonic filtering)
+      static constexpr float combAlpha = 0.95f;
+      
       // Raw ADC data
       std::array<uint16_t, dataLength> dataHRS;
       // Stores Real numbers from FFT
@@ -75,6 +104,10 @@ namespace Pinetime {
       int ProcessHeartRate(bool init);
       float HeartRateAverage(float hr);
       void SpectrumAverage(const float* data, float* spectrum, int length, bool reset);
+
+      // update HR estimation functions (Zainab)
+      float ProcessALNF(float input);
+      void ApplyCombFilter(std::array<float, Ppg::dataLength>& data, float estimatedFreq);
     };
   }
 }

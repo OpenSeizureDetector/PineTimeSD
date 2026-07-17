@@ -184,9 +184,32 @@ void Ppg::Reset(bool resetDaqBuffer) {
 // Pass init == true to reset spectral averaging.
 // Returns -1 (Reset Acquisition), 0 (Unable to obtain HR) or HR (BPM).
 int Ppg::ProcessHeartRate(bool init) {
+  // If a reset is needed, clear ALNF & Comb filter memories
+  if (init) {
+    g_t1 = 0.0f;
+    g_t2 = 0.0f;
+    Rg_0 = 1.0f;
+    Rg_1 = 0.0f;
+    k0_hat = 0.0f;
+    comb_w1.fill(0.0f);
+    comb_w2.fill(0.0f);
+  }
+
   std::copy(dataHRS.begin(), dataHRS.end(), vReal.begin());
   Detrend(vReal);
+
+  // Shaping/Bandpass filter (from old code)
   Filter30to240(vReal);
+
+  // Track fundamental frequency per sample using ALNF
+  float estimated_f0 = 0.0f;
+  int newSamplesStart = dataLength - overlapWindow; // 64 - 5 = 59
+
+  for (int idx = newSamplesStart; idx < dataLength; idx++) {
+    estimated_f0 = ProcessALNF(vReal[idx]);
+  }
+  ApplyCombFilter(vReal, estimated_f0);
+  // Process clean data (kept old code)
   vImag.fill(0.0f);
   // Apply Hanning Window
   int hannIdx = 0;
@@ -252,6 +275,77 @@ int Ppg::ProcessHeartRate(bool init) {
   return rtn;
 }
 
+
+// OLD (Zainab updated above)
+// int Ppg::ProcessHeartRate(bool init) {
+//   std::copy(dataHRS.begin(), dataHRS.end(), vReal.begin());
+//   Detrend(vReal);
+//   Filter30to240(vReal);
+//   vImag.fill(0.0f);
+//   // Apply Hanning Window
+//   int hannIdx = 0;
+//   for (int idx = 0; idx < dataLength; idx++) {
+//     if (idx >= dataLength >> 1) {
+//       hannIdx--;
+//     }
+//     vReal[idx] *= hanning[hannIdx];
+//     if (idx < dataLength >> 1) {
+//       hannIdx++;
+//     }
+//   }
+//   // Compute in place power spectrum
+//   ArduinoFFT<float> FFT = ArduinoFFT<float>(vReal.data(), vImag.data(), dataLength, sampleFreq);
+//   FFT.compute(FFTDirection::Forward);
+//   FFT.complexToMagnitude();
+//   FFT.~ArduinoFFT();
+//   SpectrumAverage(vReal.data(), spectrum.data(), spectrum.size(), init);
+//   peakLocation = 0.0f;
+//   float threshold = peakDetectionThreshold;
+//   float peakWidth = 0.0f;
+//   int specLen = spectrum.size();
+//   float max = SpectrumMax(spectrum, hrROIbegin, hrROIend);
+//   float signalToNoiseRatio = SignalToNoise(spectrum, hrROIbegin, hrROIend, max);
+//   if (signalToNoiseRatio > signalToNoiseThreshold && spectrum.at(0) < dcThreshold) {
+//     threshold *= max;
+//     // Reuse VImag for interpolation x values passed to PeakSearch
+//     for (int idx = 0; idx < dataLength; idx++) {
+//       vImag[idx] = idx;
+//     }
+//     peakLocation = PeakSearch(vImag.data(),
+//                               spectrum.data(),
+//                               threshold,
+//                               peakWidth,
+//                               static_cast<float>(hrROIbegin),
+//                               static_cast<float>(hrROIend),
+//                               specLen);
+//     peakLocation *= freqResolution;
+//   }
+//   // Peak too wide? (broad spectrum noise or large, rapid HR change)
+//   if (peakWidth > maxPeakWidth) {
+//     peakLocation = 0.0f;
+//   }
+//   // Check HR limits
+//   if (peakLocation < minHR || peakLocation > maxHR) {
+//     peakLocation = 0.0f;
+//   }
+//   // Reset spectral averaging if bad reading
+//   if (peakLocation == 0.0f) {
+//     resetSpectralAvg = true;
+//   }
+//   // Set the ambient light threshold and return HR in BPM
+//   alsThreshold = static_cast<uint16_t>(alsValue * alsFactor);
+//   // Get current average HR. If HR reduced to zero, return -1 (reset) else HR
+//   peakLocation = HeartRateAverage(peakLocation);
+//   int rtn = -1;
+//   if (peakLocation == 0.0f && lastPeakLocation > 0.0f) {
+//     lastPeakLocation = 0.0f;
+//   } else {
+//     lastPeakLocation = peakLocation;
+//     rtn = static_cast<int>((peakLocation * 60.0f) + 0.5f);
+//   }
+//   return rtn;
+// }
+
 void Ppg::SpectrumAverage(const float* data, float* spectrum, int length, bool reset) {
   if (reset) {
     spectralAvgCount = 0;
@@ -289,4 +383,66 @@ float Ppg::HeartRateAverage(float hr) {
     avg = 0.0f;
   }
   return avg;
+}
+
+float Ppg::ProcessALNF(float input) {
+  // Calculate g(t) based on lattic structure
+  float g_t = input - (k0_hat * (1.0f + alnfAlpha) * g_t1) - (alnfAlpha * g_t2);
+
+  // Update autocorrelation estimates (eq 7a & 7b from paper)
+  Rg_0 = (alnfLambda * Rg_0) + ((1.0f - alnfLambda) * 2.0f * g_t1 * g_t1);
+  Rg_1 = (alnfLambda * Rg_1) + ((1.0f - alnfLambda) * g_t1 * (g_t + g_t2));
+
+  // Calculate raw adaptation parameter k0 (Eq 7c from paper)
+  float k0_raw = 0.0f;
+
+
+  if (Rg_0 > 0.00001f) { 
+    k0_raw = -Rg_1 / Rg_0; // to prevent div by 0 
+  }
+
+  // Bound k0_raw between -1 and 1 to keep filter stable (Eq 7d from paper)
+  if (k0_raw > 1.0f) k0_raw = 1.0f;
+  if (k0_raw < -1.0f) k0_raw = -1.0f;
+
+  // Smooth the adaptation parameter (Eq 7e from paper)
+  k0_hat = (alnfGamma *k0_hat) + ((1.0f - alnfGamma) * k0_raw);
+
+  // Shift states to save as history for next sample
+  g_t2 = g_t1;
+  g_t1 = g_t;
+
+  // Extract normalized fundamental frequency from k0_hat
+  // f0 = (1/2*PI)*acos(-k0_hat)
+  float f0_normalized = acosf(-k0_hat) / (2.0f * 3.14159265f);
+  return f0_normalized * sampleFreq;
+}
+
+void Ppg::ApplyCombFilter(std::array<float, Ppg::dataLength>& data, float estimatedFreq) {
+  // Convert estimated Hz into normalized frequency (0.0-0.5)
+  float f0_norm = estimatedFreq / sampleFreq;
+
+  for (size_t i = 0; i < data.size(); i++) {
+    float current_val = data[i];
+
+    // Cascade through each harmonic filter notch
+    for (int j = 0; j < combN; j++) {
+      // Calculate harmonic multiplier (eq 9 from paper)
+      // essentially where J goes from 1 to N we shift indexing by adding 1.5f
+      float harmonic_multiplier = static_cast<float>(j) + 1.5f;
+      float k_j = -cosf(2.0f * 3.14159265f * harmonic_multiplier * f0_norm);      
+      // Direct form II IIR Notch implementation using the state memory
+      float w0 = current_val - (k_j * (1.0f + combAlpha) * comb_w1[j]) - (combAlpha * comb_w2[j]);
+      float y = w0 + (2.0f * k_j * comb_w1[j]) + comb_w2[j];
+
+      // Update filter states for this cascade stage
+      comb_w2[j] = comb_w1[j];
+      comb_w1[j] = w0;
+
+      current_val = y;
+
+    // Overwrite og array w/ cleaned sample
+    data[i] = current_val;
+    }
+  }
 }
