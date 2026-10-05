@@ -9,14 +9,12 @@ using namespace Pinetime::Drivers;
 namespace {
   int8_t user_i2c_read(uint8_t reg_addr, uint8_t* reg_data, uint32_t length, void* intf_ptr) {
     auto bma421 = static_cast<Bma421*>(intf_ptr);
-    bma421->Read(reg_addr, reg_data, length);
-    return 0;
+    return bma421->Read(reg_addr, reg_data, length) ? BMA4_INTF_RET_SUCCESS : BMA4_E_COM_FAIL;
   }
 
   int8_t user_i2c_write(uint8_t reg_addr, const uint8_t* reg_data, uint32_t length, void* intf_ptr) {
     auto bma421 = static_cast<Bma421*>(intf_ptr);
-    bma421->Write(reg_addr, reg_data, length);
-    return 0;
+    return bma421->Write(reg_addr, reg_data, length) ? BMA4_INTF_RET_SUCCESS : BMA4_E_COM_FAIL;
   }
 
   void user_delay(uint32_t period_us, void* /*intf_ptr*/) {
@@ -69,6 +67,11 @@ void Bma421::Init() {
   if (ret != BMA4_OK)
     return;
 
+  ret = bma4_set_advance_power_save(BMA4_DISABLE, &bma);
+  if (ret != BMA4_OK)
+    return;
+  bma.delay_us(450, bma.intf_ptr);
+
   ret = bma4_set_interrupt_mode(BMA4_LATCH_MODE, &bma);
   if (ret != BMA4_OK)
     return;
@@ -81,12 +84,19 @@ void Bma421::Init() {
   if (ret != BMA4_OK)
     return;
 
-  ret = bma4_set_accel_enable(1, &bma);
+  ret = bma4_set_accel_fifo_filter_data(BMA4_ENABLE, &bma);
   if (ret != BMA4_OK)
     return;
 
-  // Configure FIFO
-  ret = bma4_set_fifo_config(BMA4_FIFO_ACCEL, 1, &bma);
+  ret = bma4_set_fifo_down_accel(0, &bma);
+  if (ret != BMA4_OK)
+    return;
+
+  ret = bma4_set_fifo_config(BMA4_FIFO_TIME, 0, &bma);
+  if (ret != BMA4_OK)
+    return;
+
+  ret = bma4_set_fifo_config(BMA4_FIFO_HEADER, 0, &bma);
   if (ret != BMA4_OK)
     return;
 
@@ -95,13 +105,57 @@ void Bma421::Init() {
   fifo_frame.fifo_data_enable = BMA4_FIFO_A_ENABLE;
   fifo_frame.fifo_header_enable = 0;
 
+  ret = bma4_set_fifo_config(BMA4_FIFO_ACCEL, 1, &bma);
+  if (ret != BMA4_OK)
+    return;
+
   accel_conf.odr = BMA4_OUTPUT_DATA_RATE_25HZ;
   accel_conf.range = BMA4_ACCEL_RANGE_4G;
   accel_conf.bandwidth = BMA4_ACCEL_NORMAL_AVG4;
   accel_conf.perf_mode = BMA4_CONTINUOUS_MODE;
-  ret = bma4_set_accel_config(&accel_conf, &bma);
+
+  uint8_t accelConfByte = (accel_conf.odr & BMA4_ACCEL_ODR_MSK) |
+                          static_cast<uint8_t>(accel_conf.bandwidth << BMA4_ACCEL_BW_POS) |
+                          static_cast<uint8_t>(accel_conf.perf_mode << BMA4_ACCEL_PERFMODE_POS);
+  uint8_t accelRangeByte = accel_conf.range & BMA4_ACCEL_RANGE_MSK;
+
+  bma.perf_mode_status = BMA4_DISABLE;
+  ret = bma4_write_regs(BMA4_ACCEL_CONFIG_ADDR, &accelConfByte, 1, &bma);
+  if (ret == BMA4_OK) {
+    bma.delay_us(BMA4_GEN_READ_WRITE_DELAY, bma.intf_ptr);
+    ret = bma4_write_regs(BMA4_ACCEL_CONFIG_ADDR + 1, &accelRangeByte, 1, &bma);
+  }
+  bma.perf_mode_status = accel_conf.perf_mode;
   if (ret != BMA4_OK)
     return;
+  bma.delay_us(BMA4_GEN_READ_WRITE_DELAY, bma.intf_ptr);
+
+  bma.perf_mode_status = BMA4_DISABLE;
+  ret = bma4_set_accel_enable(1, &bma);
+  if (ret != BMA4_OK)
+    return;
+  bma.perf_mode_status = accel_conf.perf_mode;
+  bma.delay_us(BMA4_GEN_READ_WRITE_DELAY, bma.intf_ptr);
+
+  struct bma4_accel_config actualAccelConf {};
+  uint8_t actualFifoConfig = 0;
+  uint8_t actualFifoDown = 0;
+  uint8_t actualAdvPowerSave = 0;
+  if (bma4_get_accel_config(&actualAccelConf, &bma) != BMA4_OK ||
+      actualAccelConf.odr != accel_conf.odr ||
+      actualAccelConf.range != accel_conf.range ||
+      actualAccelConf.bandwidth != accel_conf.bandwidth ||
+      actualAccelConf.perf_mode != accel_conf.perf_mode ||
+      bma4_get_fifo_config(&actualFifoConfig, &bma) != BMA4_OK ||
+      (actualFifoConfig & BMA4_FIFO_HEADER) != 0 ||
+      (actualFifoConfig & BMA4_FIFO_ACCEL) == 0 ||
+      bma4_read_regs(BMA4_FIFO_DOWN_ADDR, &actualFifoDown, 1, &bma) != BMA4_OK ||
+      (actualFifoDown & BMA4_FIFO_FILTER_ACCEL_MSK) == 0 ||
+      (actualFifoDown & BMA4_FIFO_DOWN_ACCEL_MSK) != 0 ||
+      bma4_get_advance_power_save(&actualAdvPowerSave, &bma) != BMA4_OK ||
+      actualAdvPowerSave != BMA4_DISABLE) {
+    return;
+  }
 
   isOk = true;
 }
@@ -111,12 +165,12 @@ void Bma421::Reset() {
   twiMaster.Write(deviceAddress, 0x7E, &data, 1);
 }
 
-void Bma421::Read(uint8_t registerAddress, uint8_t* buffer, size_t size) {
-  twiMaster.Read(deviceAddress, registerAddress, buffer, size);
+bool Bma421::Read(uint8_t registerAddress, uint8_t* buffer, size_t size) {
+  return twiMaster.Read(deviceAddress, registerAddress, buffer, size) == TwiMaster::ErrorCodes::NoError;
 }
 
-void Bma421::Write(uint8_t registerAddress, const uint8_t* data, size_t size) {
-  twiMaster.Write(deviceAddress, registerAddress, data, size);
+bool Bma421::Write(uint8_t registerAddress, const uint8_t* data, size_t size) {
+  return twiMaster.Write(deviceAddress, registerAddress, data, size) == TwiMaster::ErrorCodes::NoError;
 }
 
 Bma421::Values Bma421::Process() {
@@ -151,8 +205,11 @@ Bma421::Values Bma421::Process() {
   uint16_t nFifo = fifoLen / 6;
   if (nFifo > 0) {
     fifo_frame.length = fifoLen;
-    bma4_read_fifo_data(&fifo_frame, &bma);
+    auto fifoRet = bma4_read_fifo_data(&fifo_frame, &bma);
     fifo_frame.length = sizeof(fifo); // restore for the next call
+    if (fifoRet != BMA4_OK) {
+      return {steps, nullptr, 0};
+    }
 
     // Unpack the frames here instead of calling bma4_extract_accel(): with the
     // exact byte count known, the vendor parser's empty-FIFO heuristic is
@@ -169,11 +226,11 @@ Bma421::Values Bma421::Process() {
     }
   }
 
-    // Swap X and Y order because of the way the sensor is mounted in the PineTime
-    // Then scale the measured ADC counts to units of 'binary milli-g'
-    // where 1g = 1024 'binary milli-g' units.
-    // See https://github.com/InfiniTimeOrg/InfiniTime/pull/1950 for
-    // discussion of why we opted for scaling to 1024 rather than 1000.
+  // Swap X and Y order because of the way the sensor is mounted in the PineTime
+  // Then scale the measured ADC counts to units of 'binary milli-g'
+  // where 1g = 1024 'binary milli-g' units.
+  // See https://github.com/InfiniTimeOrg/InfiniTime/pull/1950 for
+  // discussion of why we opted for scaling to 1024 rather than 1000.
   for (uint8_t i = 0; i < nFifo; i++) {
     int16_t swap = fifo[i][0];
     fifo[i][0] = fifo[i][1];
