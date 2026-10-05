@@ -133,11 +133,41 @@ Bma421::Values Bma421::Process() {
   uint8_t activity = 0;
   bma423_activity_output(&activity, &bma);
 
-  // Read entire FIFO into buffer fifo_frame
-  bma4_read_fifo_data(&fifo_frame, &bma);
-  // Decode FIFO frames in-place sequentially
-  uint16_t nFifo = 18; // Should be about 20 (200 Hz ODR / 10 Hz main loop)
-  bma4_extract_accel((bma4_accel*) fifo, &nFifo, &fifo_frame, &bma);
+  // Ask the sensor how many bytes are actually in the FIFO and read exactly
+  // that many, rounded down to whole 6-byte accel frames. Reading a fixed
+  // 192 bytes and relying on the driver's 0x80/0x00 empty-FIFO heuristic made
+  // the parsed frame count data-dependent: it either over-parsed filler bytes
+  // beyond the valid data (fabricated samples) or truncated real data.
+  // See doc/AccelerometerSampleRateAnalysis.md §8.2.
+  uint16_t fifoLen = 0;
+  if (bma4_get_fifo_length(&fifoLen, &bma) != BMA4_OK) {
+    fifoLen = 0;
+  }
+  if (fifoLen > sizeof(fifo)) {
+    fifoLen = sizeof(fifo); // defensive: never overflow our buffer
+  }
+  fifoLen -= fifoLen % 6; // whole frames only
+
+  uint16_t nFifo = fifoLen / 6;
+  if (nFifo > 0) {
+    fifo_frame.length = fifoLen;
+    bma4_read_fifo_data(&fifo_frame, &bma);
+    fifo_frame.length = sizeof(fifo); // restore for the next call
+
+    // Unpack the frames here instead of calling bma4_extract_accel(): with the
+    // exact byte count known, the vendor parser's empty-FIFO heuristic is
+    // unnecessary and could still truncate mid-batch on a genuine sample whose
+    // X bytes are 0x80/0x00. Same little-endian layout and 12-bit scaling as
+    // the vendor's unpack_accel_data() (bma4.c); the FIFO is accel-only and
+    // header-less (configured in Init()). Conversion is in-place: frame i is
+    // read from the bytes it overwrites.
+    for (uint16_t i = 0; i < nFifo; i++) {
+      const uint8_t* frame = &fifo_frame.data[i * 6];
+      fifo[i][0] = static_cast<int16_t>((frame[1] << 8) | frame[0]) / 0x10; // x
+      fifo[i][1] = static_cast<int16_t>((frame[3] << 8) | frame[2]) / 0x10; // y
+      fifo[i][2] = static_cast<int16_t>((frame[5] << 8) | frame[4]) / 0x10; // z
+    }
+  }
 
     // Swap X and Y order because of the way the sensor is mounted in the PineTime
     // Then scale the measured ADC counts to units of 'binary milli-g'

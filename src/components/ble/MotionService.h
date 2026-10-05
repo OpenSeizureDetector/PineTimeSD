@@ -19,8 +19,7 @@ namespace Pinetime {
       void Init();
       int OnStepCountRequested(uint16_t attributeHandle, ble_gatt_access_ctxt* context);
       void OnNewStepCountValue(uint32_t stepCount);
-      void OnNewMotionValues(int16_t *fifo, uint16_t nFifo);
-
+      void OnNewMotionValues(const int16_t* fifo, uint16_t nFifo);
       void SubscribeNotification(uint16_t attributeHandle);
       void UnsubscribeNotification(uint16_t attributeHandle);
       bool IsMotionNotificationSubscribed() const;
@@ -32,8 +31,19 @@ namespace Pinetime {
 
       struct ble_gatt_chr_def characteristicDefinition[4];
       struct ble_gatt_svc_def serviceDefinition[2];
-      int16_t *data;
-      int16_t nData;
+
+      /// Snapshot of the payload sent by the most recent motion notification.
+      /// Serves the (rare) GATT READ path, which runs on the NimBLE host task;
+      /// previously that path dereferenced a raw pointer into Bma421::fifo
+      /// that SystemTask could be refilling concurrently (data race).
+      /// Sized for the BMA42x hardware FIFO capacity (100 bytes = 16 frames).
+      static constexpr uint16_t maxMotionValueFrames = 16;
+      int16_t lastMotionValues[maxMotionValueFrames * 3] = {};
+      uint16_t lastMotionValuesCount = 0;
+
+      /// Counts motion notifications that could not be queued (no mbuf,
+      /// congestion, MTU too small). Sample loss is otherwise silent.
+      uint32_t motionNotifyFailCount = 0;
 
       uint16_t stepCountHandle;
       uint16_t motionValuesHandle;

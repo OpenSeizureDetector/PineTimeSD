@@ -1,4 +1,5 @@
 #include "components/ble/MotionService.h"
+#include <cstring>
 #include "components/motion/MotionController.h"
 #include "components/ble/NimbleController.h"
 #include <nrf_log.h>
@@ -78,11 +79,11 @@ int MotionService::OnStepCountRequested(uint16_t attributeHandle, ble_gatt_acces
     res = os_mbuf_append(context->om, &buffer, 4);
     return (res == 0) ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
   } else if (attributeHandle == motionValuesHandle) {
-    if (this->nData < 3) {
-      res = os_mbuf_append(context->om, this->data, nData * 3 * sizeof(int16_t));
-    } else {
-      res = os_mbuf_append(context->om, this->data, 3 * 3 * sizeof(int16_t));
-    }
+    // Serve the most recently notified samples. The snapshot is written by
+    // OnNewMotionValues() (SystemTask context) and only read here (NimBLE host
+    // task); the old code dereferenced a raw pointer into the live Bma421 FIFO
+    // and hard-capped the payload at 3 frames.
+    res = os_mbuf_append(context->om, lastMotionValues, lastMotionValuesCount * 3 * sizeof(int16_t));
     return (res == 0) ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
   } else if (attributeHandle == osdStatusHandle) {
     int8_t statusVal = -1;
@@ -98,32 +99,77 @@ void MotionService::OnNewStepCountValue(uint32_t stepCount) {
   if (!stepCountNoficationEnabled)
     return;
 
-  uint32_t buffer = stepCount;
-  auto* om = ble_hs_mbuf_from_flat(&buffer, 4);
-
   uint16_t connectionHandle = nimble.connHandle();
 
   if (connectionHandle == 0 || connectionHandle == BLE_HS_CONN_HANDLE_NONE) {
+    return;
+  }
+
+  // Allocate only once we know the mbuf will be consumed. Allocating before
+  // the connection check leaked one mbuf per call while disconnected; with
+  // MSYS_1_BLOCK_COUNT == 12 that could exhaust the pool and provoke a NimBLE
+  // host reset (doc/AccelerometerSampleRateAnalysis.md §8.5).
+  uint32_t buffer = stepCount;
+  auto* om = ble_hs_mbuf_from_flat(&buffer, 4);
+  if (om == nullptr) {
     return;
   }
 
   ble_gattc_notify_custom(connectionHandle, stepCountHandle, om);
 }
 
-void MotionService::OnNewMotionValues(int16_t *fifo, uint16_t nFifo) {
-  if (!motionValuesNoficationEnabled)
+void MotionService::OnNewMotionValues(const int16_t* fifo, uint16_t nFifo) {
+  if (!motionValuesNoficationEnabled || fifo == nullptr || nFifo == 0) {
     return;
-
-  //auto* om = ble_hs_mbuf_from_flat(fifo, 3 * nFifo * sizeof(int16_t));
-  this->data = fifo;
-  this->nData = nFifo;
+  }
 
   uint16_t connectionHandle = nimble.connHandle();
   if (connectionHandle == 0 || connectionHandle == BLE_HS_CONN_HANDLE_NONE) {
     return;
   }
-  //ble_gattc_notify_custom(connectionHandle, motionValuesHandle, om);
-  ble_gattc_notify(connectionHandle, motionValuesHandle);
+
+  // Build the notification payload here and hand it to ble_gattc_notify_custom()
+  // instead of letting the NimBLE host task pull the data back through the
+  // access callback (which capped every notification at 3 frames and read a
+  // raw pointer into the live Bma421 FIFO).
+  // See doc/AccelerometerSampleRateAnalysis.md §8.1.
+
+  // A notification must fit in a single ATT payload: negotiated MTU - 3 bytes,
+  // rounded down to whole 6-byte frames, and bounded by the snapshot buffer.
+  uint16_t mtu = ble_att_mtu(connectionHandle);
+  uint16_t maxBytes = (mtu > 3) ? static_cast<uint16_t>(mtu - 3) : 20;
+  maxBytes -= maxBytes % (3 * sizeof(int16_t));
+  uint16_t nSend = nFifo;
+  if (nSend > maxMotionValueFrames) {
+    nSend = maxMotionValueFrames;
+  }
+  if (static_cast<uint32_t>(nSend) * 6 > maxBytes) {
+    nSend = maxBytes / 6;
+  }
+  if (nSend == 0) {
+    motionNotifyFailCount++;
+    return;
+  }
+
+  const uint16_t payloadBytes = nSend * 3 * sizeof(int16_t);
+
+  // Snapshot for the GATT READ path before handing the data to NimBLE.
+  std::memcpy(lastMotionValues, fifo, payloadBytes);
+  lastMotionValuesCount = nSend;
+
+  auto* om = ble_hs_mbuf_from_flat(fifo, payloadBytes);
+  if (om == nullptr) {
+    motionNotifyFailCount++;
+    return;
+  }
+
+  // Ownership of om passes to NimBLE on both success and failure
+  // (ble_gattc_notify_custom frees it if the send fails).
+  int rc = ble_gattc_notify_custom(connectionHandle, motionValuesHandle, om);
+  if (rc != 0) {
+    motionNotifyFailCount++;
+    NRF_LOG_INFO("Motion notify failed: rc=%d (fail count=%d)", rc, motionNotifyFailCount);
+  }
 }
 
 void MotionService::SubscribeNotification(uint16_t attributeHandle) {
