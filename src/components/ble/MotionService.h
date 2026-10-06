@@ -37,6 +37,7 @@ namespace Pinetime {
       /// previously that path dereferenced a raw pointer into Bma421::fifo
       /// that SystemTask could be refilling concurrently (data race).
       /// Sized for the BMA42x hardware FIFO capacity (100 bytes = 16 frames).
+      ///    (16 frames x 6 bytes per frame = 96 bytes - we do not use the last 4 fifo bytes so we always send a complete x,y,z set).
       static constexpr uint16_t maxMotionValueFrames = 16;
       int16_t lastMotionValues[maxMotionValueFrames * 3] = {};
       uint16_t lastMotionValuesCount = 0;
