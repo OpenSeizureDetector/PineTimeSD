@@ -115,29 +115,13 @@ void Bma421::Init() {
   accel_conf.range = BMA4_ACCEL_RANGE_4G;
   accel_conf.bandwidth = BMA4_ACCEL_NORMAL_AVG4;
   accel_conf.perf_mode = BMA4_CONTINUOUS_MODE;
-
-  uint8_t accelConfByte = (accel_conf.odr & BMA4_ACCEL_ODR_MSK) |
-                          static_cast<uint8_t>(accel_conf.bandwidth << BMA4_ACCEL_BW_POS) |
-                          static_cast<uint8_t>(accel_conf.perf_mode << BMA4_ACCEL_PERFMODE_POS);
-  uint8_t accelRangeByte = accel_conf.range & BMA4_ACCEL_RANGE_MSK;
-
-  bma.perf_mode_status = BMA4_DISABLE;
-  ret = bma4_write_regs(BMA4_ACCEL_CONFIG_ADDR, &accelConfByte, 1, &bma);
-  if (ret == BMA4_OK) {
-    bma.delay_us(BMA4_GEN_READ_WRITE_DELAY, bma.intf_ptr);
-    ret = bma4_write_regs(BMA4_ACCEL_CONFIG_ADDR + 1, &accelRangeByte, 1, &bma);
-  }
-  bma.perf_mode_status = accel_conf.perf_mode;
+  ret = bma4_set_accel_config(&accel_conf, &bma);
   if (ret != BMA4_OK)
     return;
-  bma.delay_us(BMA4_GEN_READ_WRITE_DELAY, bma.intf_ptr);
 
-  bma.perf_mode_status = BMA4_DISABLE;
   ret = bma4_set_accel_enable(1, &bma);
   if (ret != BMA4_OK)
     return;
-  bma.perf_mode_status = accel_conf.perf_mode;
-  bma.delay_us(BMA4_GEN_READ_WRITE_DELAY, bma.intf_ptr);
 
   struct bma4_accel_config actualAccelConf {};
   uint8_t actualFifoConfig = 0;
