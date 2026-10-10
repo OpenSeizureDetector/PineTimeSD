@@ -6,6 +6,28 @@
 
 using namespace Pinetime::Controllers;
 
+/**
+ ***********************************************************************************************************************************
+ * Notes on How Accelerometer Data is retrieved and processed for OpenSeizureDetector.
+ * 
+ * SystemTask::Work() calls SystemTask::UpdateMotion() every loop.
+ * SystemTask::UpdateMotion() calls BMA421::Process() 
+ * BMA421::Process() reads the stored data from the FIFO on the chip and returns a struct containing the data 
+ *    (struct Values in BMA421.h).  The returned struct contains the step count, an array fifo containing the data, 
+ *    and nFifo, which is the number of elements in the fifo array.
+ * SystemTask::UpdateMotion() calls MotionController::Update() with the new data received from BMA421::Process().
+ * MotionController::Update() calls MotionService::OnNewMotionValues() with the new data (fifo[] and nFifo).
+ * MotionService::OnNewMotionValues() creates a copy of the fifo buffer (lastMotionValues[]) and sends a notification to the phone
+ *    with the new data.
+ *    When the phone receives the notification, it will read the data, which results in 
+ *    MotionService::OnStepCountRequested() being called.
+ * MotionService::OnStepCountRequested() returns the lastMotionValues[] data.
+ * 
+ * The use of lastMotionValues[] is to avoid the data being updated betwen the notification being sent and the phone reading the data.
+ ***********************************************************************************************************************************
+ */
+
+
 namespace {
   // 0003yyxx-78fc-48fe-8e23-433b3a1942d0
   constexpr ble_uuid128_t CharUuid(uint8_t x, uint8_t y) {

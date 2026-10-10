@@ -67,6 +67,8 @@ void Bma421::Init() {
   if (ret != BMA4_OK)
     return;
 
+  // FIXME - we are disabling advanced power save because we are polling the FIFO.
+  //         If we have trouble with battery life after this change we should consider using the interrupt instead of polling the FIFO.
   ret = bma4_set_advance_power_save(BMA4_DISABLE, &bma);
   if (ret != BMA4_OK)
     return;
