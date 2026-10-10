@@ -78,6 +78,19 @@ namespace Pinetime {
         fastAdvCount = 0;
       };
 
+      /// True while an advertising operation is running. Cheap and thread-safe
+      /// (single read of the NimBLE GAP state). Used by the SystemTask
+      /// advertising watchdog, see doc/BleAdvertisingFailureAnalysis.md §8.1.
+      bool IsAdvActive() const {
+        return ble_gap_adv_active() != 0;
+      }
+
+      /// Forget all application-level connection state. Called when the NimBLE
+      /// host resets or re-syncs: any connection that existed is gone, so
+      /// guards like Ble::IsConnected() must not stay stale-true.
+      /// See doc/BleAdvertisingFailureAnalysis.md §8.3 (hole A).
+      void ResetConnectionState();
+
       void EnableRadio();
       void DisableRadio();
 

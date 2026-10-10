@@ -126,6 +126,10 @@ namespace Pinetime {
       void Work();
       bool isBleDiscoveryTimerRunning = false;
       uint8_t bleDiscoveryTimer = 0;
+      /// Countdown for the advertising watchdog; one tick per loop iteration,
+      /// so ~1 s at the nominal ~100 ms loop cadence.
+      /// See doc/BleAdvertisingFailureAnalysis.md §8.1.
+      uint8_t advWatchdogTimer = 0;
       TimerHandle_t measureBatteryTimer;
       bool doNotGoToSleep = false;
       SystemTaskState state = SystemTaskState::Running;
