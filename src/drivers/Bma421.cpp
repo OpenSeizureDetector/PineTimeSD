@@ -9,14 +9,12 @@ using namespace Pinetime::Drivers;
 namespace {
   int8_t user_i2c_read(uint8_t reg_addr, uint8_t* reg_data, uint32_t length, void* intf_ptr) {
     auto bma421 = static_cast<Bma421*>(intf_ptr);
-    bma421->Read(reg_addr, reg_data, length);
-    return 0;
+    return bma421->Read(reg_addr, reg_data, length) ? BMA4_INTF_RET_SUCCESS : BMA4_E_COM_FAIL;
   }
 
   int8_t user_i2c_write(uint8_t reg_addr, const uint8_t* reg_data, uint32_t length, void* intf_ptr) {
     auto bma421 = static_cast<Bma421*>(intf_ptr);
-    bma421->Write(reg_addr, reg_data, length);
-    return 0;
+    return bma421->Write(reg_addr, reg_data, length) ? BMA4_INTF_RET_SUCCESS : BMA4_E_COM_FAIL;
   }
 
   void user_delay(uint32_t period_us, void* /*intf_ptr*/) {
@@ -46,6 +44,7 @@ Bma421::Bma421(TwiMaster& twiMaster, uint8_t twiAddress) : twiMaster {twiMaster}
 }
 
 void Bma421::Init() {
+  isOk = false;
   if (not isResetOk)
     return; // Call SoftReset (and reset TWI device) first!
 
@@ -69,6 +68,14 @@ void Bma421::Init() {
   if (ret != BMA4_OK)
     return;
 
+  // FIXME - we are disabling advanced power save because we are polling the FIFO.
+  //         If we have trouble with battery life after this change we should consider using the interrupt instead of polling the FIFO.
+  //         But from the test done with advance power save disabled, we still got well over 24 hours of battery life, so it is ok as it is.
+  ret = bma4_set_advance_power_save(BMA4_DISABLE, &bma);
+  if (ret != BMA4_OK)
+    return;
+  bma.delay_us(450, bma.intf_ptr);
+
   ret = bma4_set_interrupt_mode(BMA4_LATCH_MODE, &bma);
   if (ret != BMA4_OK)
     return;
@@ -81,12 +88,19 @@ void Bma421::Init() {
   if (ret != BMA4_OK)
     return;
 
-  ret = bma4_set_accel_enable(1, &bma);
+  ret = bma4_set_accel_fifo_filter_data(BMA4_ENABLE, &bma);
   if (ret != BMA4_OK)
     return;
 
-  // Configure FIFO
-  ret = bma4_set_fifo_config(BMA4_FIFO_ACCEL, 1, &bma);
+  ret = bma4_set_fifo_down_accel(0, &bma);
+  if (ret != BMA4_OK)
+    return;
+
+  ret = bma4_set_fifo_config(BMA4_FIFO_TIME, 0, &bma);
+  if (ret != BMA4_OK)
+    return;
+
+  ret = bma4_set_fifo_config(BMA4_FIFO_HEADER, 0, &bma);
   if (ret != BMA4_OK)
     return;
 
@@ -94,6 +108,10 @@ void Bma421::Init() {
   fifo_frame.length = sizeof(fifo);
   fifo_frame.fifo_data_enable = BMA4_FIFO_A_ENABLE;
   fifo_frame.fifo_header_enable = 0;
+
+  ret = bma4_set_fifo_config(BMA4_FIFO_ACCEL, 1, &bma);
+  if (ret != BMA4_OK)
+    return;
 
   accel_conf.odr = BMA4_OUTPUT_DATA_RATE_25HZ;
   accel_conf.range = BMA4_ACCEL_RANGE_4G;
@@ -103,6 +121,33 @@ void Bma421::Init() {
   if (ret != BMA4_OK)
     return;
 
+  ret = bma4_set_accel_enable(1, &bma);
+  if (ret != BMA4_OK)
+    return;
+
+  /*
+  * Now check that the configuration has been written to the chip correctly
+  */
+  struct bma4_accel_config actualAccelConf {};
+  uint8_t actualFifoConfig = 0;
+  uint8_t actualFifoDown = 0;
+  uint8_t actualAdvPowerSave = 0;
+  if (bma4_get_accel_config(&actualAccelConf, &bma) != BMA4_OK ||
+      actualAccelConf.odr != accel_conf.odr ||
+      actualAccelConf.range != accel_conf.range ||
+      actualAccelConf.bandwidth != accel_conf.bandwidth ||
+      actualAccelConf.perf_mode != accel_conf.perf_mode ||
+      bma4_get_fifo_config(&actualFifoConfig, &bma) != BMA4_OK ||
+      (actualFifoConfig & BMA4_FIFO_HEADER) != 0 ||
+      (actualFifoConfig & BMA4_FIFO_ACCEL) == 0 ||
+      bma4_read_regs(BMA4_FIFO_DOWN_ADDR, &actualFifoDown, 1, &bma) != BMA4_OK ||
+      (actualFifoDown & BMA4_FIFO_FILTER_ACCEL_MSK) == 0 ||
+      (actualFifoDown & BMA4_FIFO_DOWN_ACCEL_MSK) != 0 ||
+      bma4_get_advance_power_save(&actualAdvPowerSave, &bma) != BMA4_OK ||
+      actualAdvPowerSave != BMA4_DISABLE) {
+    return;
+  }
+
   isOk = true;
 }
 
@@ -111,12 +156,12 @@ void Bma421::Reset() {
   twiMaster.Write(deviceAddress, 0x7E, &data, 1);
 }
 
-void Bma421::Read(uint8_t registerAddress, uint8_t* buffer, size_t size) {
-  twiMaster.Read(deviceAddress, registerAddress, buffer, size);
+bool Bma421::Read(uint8_t registerAddress, uint8_t* buffer, size_t size) {
+  return twiMaster.Read(deviceAddress, registerAddress, buffer, size) == TwiMaster::ErrorCodes::NoError;
 }
 
-void Bma421::Write(uint8_t registerAddress, const uint8_t* data, size_t size) {
-  twiMaster.Write(deviceAddress, registerAddress, data, size);
+bool Bma421::Write(uint8_t registerAddress, const uint8_t* data, size_t size) {
+  return twiMaster.Write(deviceAddress, registerAddress, data, size) == TwiMaster::ErrorCodes::NoError;
 }
 
 Bma421::Values Bma421::Process() {
@@ -133,17 +178,50 @@ Bma421::Values Bma421::Process() {
   uint8_t activity = 0;
   bma423_activity_output(&activity, &bma);
 
-  // Read entire FIFO into buffer fifo_frame
-  bma4_read_fifo_data(&fifo_frame, &bma);
-  // Decode FIFO frames in-place sequentially
-  uint16_t nFifo = 18; // Should be about 20 (200 Hz ODR / 10 Hz main loop)
-  bma4_extract_accel((bma4_accel*) fifo, &nFifo, &fifo_frame, &bma);
+  // Ask the sensor how many bytes are actually in the FIFO and read exactly
+  // that many, rounded down to whole 6-byte accel frames. Reading a fixed
+  // 192 bytes and relying on the driver's 0x80/0x00 empty-FIFO heuristic made
+  // the parsed frame count data-dependent: it either over-parsed filler bytes
+  // beyond the valid data (fabricated samples) or truncated real data.
+  // See doc/AccelerometerSampleRateAnalysis.md §8.2.
+  uint16_t fifoLen = 0;
+  if (bma4_get_fifo_length(&fifoLen, &bma) != BMA4_OK) {
+    fifoLen = 0;
+  }
+  if (fifoLen > sizeof(fifo)) {
+    fifoLen = sizeof(fifo); // defensive: never overflow our buffer
+  }
+  fifoLen -= fifoLen % 6; // whole frames only
 
-    // Swap X and Y order because of the way the sensor is mounted in the PineTime
-    // Then scale the measured ADC counts to units of 'binary milli-g'
-    // where 1g = 1024 'binary milli-g' units.
-    // See https://github.com/InfiniTimeOrg/InfiniTime/pull/1950 for
-    // discussion of why we opted for scaling to 1024 rather than 1000.
+  uint16_t nFifo = fifoLen / 6;
+  if (nFifo > 0) {
+    fifo_frame.length = fifoLen;
+    auto fifoRet = bma4_read_fifo_data(&fifo_frame, &bma);
+    fifo_frame.length = sizeof(fifo); // restore for the next call
+    if (fifoRet != BMA4_OK) {
+      return {steps, nullptr, 0};
+    }
+
+    // Unpack the frames here instead of calling bma4_extract_accel(): with the
+    // exact byte count known, the vendor parser's empty-FIFO heuristic is
+    // unnecessary and could still truncate mid-batch on a genuine sample whose
+    // X bytes are 0x80/0x00. Same little-endian layout and 12-bit scaling as
+    // the vendor's unpack_accel_data() (bma4.c); the FIFO is accel-only and
+    // header-less (configured in Init()). Conversion is in-place: frame i is
+    // read from the bytes it overwrites.
+    for (uint16_t i = 0; i < nFifo; i++) {
+      const uint8_t* frame = &fifo_frame.data[i * 6];
+      fifo[i][0] = static_cast<int16_t>((frame[1] << 8) | frame[0]) / 0x10; // x
+      fifo[i][1] = static_cast<int16_t>((frame[3] << 8) | frame[2]) / 0x10; // y
+      fifo[i][2] = static_cast<int16_t>((frame[5] << 8) | frame[4]) / 0x10; // z
+    }
+  }
+
+  // Swap X and Y order because of the way the sensor is mounted in the PineTime
+  // Then scale the measured ADC counts to units of 'binary milli-g'
+  // where 1g = 1024 'binary milli-g' units.
+  // See https://github.com/InfiniTimeOrg/InfiniTime/pull/1950 for
+  // discussion of why we opted for scaling to 1024 rather than 1000.
   for (uint8_t i = 0; i < nFifo; i++) {
     int16_t swap = fifo[i][0];
     fifo[i][0] = fifo[i][1];
