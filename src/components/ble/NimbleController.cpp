@@ -54,6 +54,13 @@ NimbleController::NimbleController(Pinetime::System::SystemTask& systemTask,
 
 void nimble_on_reset(int reason) {
   NRF_LOG_INFO("Nimble lost sync, resetting state; reason=%d", reason);
+  if (nptr != nullptr) {
+    // A host reset destroys every connection without delivering a DISCONNECT
+    // event. Clear the stale state now, otherwise IsConnected() stays true and
+    // the ADV_COMPLETE guard below never restarts advertising (hole A in
+    // doc/BleAdvertisingFailureAnalysis.md).
+    nptr->ResetConnectionState();
+  }
 }
 
 void nimble_on_sync(void) {
@@ -64,7 +71,11 @@ void nimble_on_sync(void) {
   rc = ble_hs_util_ensure_addr(0);
   ASSERT(rc == 0);
 
-  nptr->StartAdvertising();
+  if (nptr != nullptr) {
+    nptr->ResetConnectionState();
+    nptr->RestartFastAdv();
+    nptr->StartAdvertising();
+  }
 }
 
 int GAPEventCallback(struct ble_gap_event* event, void* arg) {
@@ -169,13 +180,25 @@ void NimbleController::StartAdvertising() {
 
   int rc;
   rc = ble_gap_adv_set_fields(&fields);
-  ASSERT(rc == 0);
+  if (rc != 0) {
+    // ASSERT() is a no-op in Release builds: the return code used to be
+    // silently discarded. Log it; the advertising watchdog in SystemTask
+    // retries within ~1 s (doc/BleAdvertisingFailureAnalysis.md §8.4).
+    NRF_LOG_ERROR("ble_gap_adv_set_fields failed: rc=%d", rc);
+  }
 
   rc = ble_gap_adv_rsp_set_fields(&rsp_fields);
-  ASSERT(rc == 0);
+  if (rc != 0) {
+    NRF_LOG_ERROR("ble_gap_adv_rsp_set_fields failed: rc=%d", rc);
+  }
 
   rc = ble_gap_adv_start(addrType, NULL, 2000, &adv_params, GAPEventCallback, this);
-  ASSERT(rc == 0);
+  if (rc != 0 && rc != BLE_HS_EALREADY) {
+    // Not fatal: the SystemTask advertising watchdog retries within ~1 s.
+    // BLE_HS_EALREADY just means advertising is already running (benign race
+    // with the ADV_COMPLETE handler or the watchdog).
+    NRF_LOG_ERROR("ble_gap_adv_start failed: rc=%d", rc);
+  }
 }
 
 int NimbleController::OnGAPEvent(ble_gap_event* event) {
@@ -221,9 +244,13 @@ int NimbleController::OnGAPEvent(ble_gap_event* event) {
       currentTimeClient.Reset();
       alertNotificationClient.Reset();
       connectionHandle = BLE_HS_CONN_HANDLE_NONE;
-      if (bleController.IsConnected()) {
-        bleController.Disconnect();
-        fastAdvCount = 0;
+      // Restart advertising unconditionally. IsConnected() can already be
+      // false here (failed CONNECT branch, DisableRadio()/EnableRadio()
+      // races), which previously left the watch silent forever - hole C in
+      // doc/BleAdvertisingFailureAnalysis.md.
+      bleController.Disconnect();
+      fastAdvCount = 0;
+      if (bleController.IsRadioEnabled()) {
         StartAdvertising();
       }
       break;
@@ -398,6 +425,13 @@ void NimbleController::NotifyBatteryLevel(uint8_t level) {
   if (connectionHandle != BLE_HS_CONN_HANDLE_NONE) {
     batteryInformationService.NotifyBatteryLevel(connectionHandle, level);
   }
+}
+
+void NimbleController::ResetConnectionState() {
+  currentTimeClient.Reset();
+  alertNotificationClient.Reset();
+  connectionHandle = BLE_HS_CONN_HANDLE_NONE;
+  bleController.Disconnect();
 }
 
 void NimbleController::EnableRadio() {
