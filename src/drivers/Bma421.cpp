@@ -44,6 +44,7 @@ Bma421::Bma421(TwiMaster& twiMaster, uint8_t twiAddress) : twiMaster {twiMaster}
 }
 
 void Bma421::Init() {
+  isOk = false;
   if (not isResetOk)
     return; // Call SoftReset (and reset TWI device) first!
 
@@ -69,6 +70,7 @@ void Bma421::Init() {
 
   // FIXME - we are disabling advanced power save because we are polling the FIFO.
   //         If we have trouble with battery life after this change we should consider using the interrupt instead of polling the FIFO.
+  //         But from the test done with advance power save disabled, we still got well over 24 hours of battery life, so it is ok as it is.
   ret = bma4_set_advance_power_save(BMA4_DISABLE, &bma);
   if (ret != BMA4_OK)
     return;
@@ -123,6 +125,9 @@ void Bma421::Init() {
   if (ret != BMA4_OK)
     return;
 
+  /*
+  * Now check that the configuration has been written to the chip correctly
+  */
   struct bma4_accel_config actualAccelConf {};
   uint8_t actualFifoConfig = 0;
   uint8_t actualFifoDown = 0;

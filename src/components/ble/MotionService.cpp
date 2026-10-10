@@ -159,7 +159,8 @@ void MotionService::OnNewMotionValues(const int16_t* fifo, uint16_t nFifo) {
   // A notification must fit in a single ATT payload: negotiated MTU - 3 bytes,
   // MTU-3 bytes is because 3 bytes are needed for the packet header, so the available payload bytes are mtu-3.
   // The fallback of 20 bytes is in case the MTU has not been negotiated correctly - 20 is the default MTU of 23 - 3 header bytes.
-  // The maximum number of bytes is rounded down to whole 6-byte frames (x,y,z), and bounded by the snapshot buffer.
+  // The maximum number of bytes is rounded down to whole 6-byte frames (x,y,z), and bounded by the length of the lastMotionValues[] buffer.
+  //   (maxMotionValueFrames).
   uint16_t mtu = ble_att_mtu(connectionHandle);
   uint16_t maxBytes = (mtu > 3) ? static_cast<uint16_t>(mtu - 3) : 20;
   maxBytes -= maxBytes % (3 * sizeof(int16_t));
