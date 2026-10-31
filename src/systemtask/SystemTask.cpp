@@ -414,6 +414,23 @@ void SystemTask::Work() {
       }
     }
 
+    // Advertising watchdog: advertising must be active whenever the radio is
+    // enabled and no connection exists. Every guarded restart path can fail
+    // silently (holes A/B/C in doc/BleAdvertisingFailureAnalysis.md); this
+    // rate-limited check (~1/s) makes advertising self-healing. A watchdog
+    // restart means the chain was broken, so re-enter fast advertising to let
+    // the phone reconnect quickly.
+    if (advWatchdogTimer == 0) {
+      advWatchdogTimer = 10;
+      if (bleController.IsRadioEnabled() && !bleController.IsConnected() && !nimbleController.IsAdvActive()) {
+        NRF_LOG_INFO("[systemtask] advertising watchdog: restarting advertising");
+        nimbleController.RestartFastAdv();
+        nimbleController.StartAdvertising();
+      }
+    } else {
+      advWatchdogTimer--;
+    }
+
     monitor.Process();
     NoInit_BackUpTime = dateTimeController.CurrentDateTime();
     if (nrf_gpio_pin_read(PinMap::Button) == 0) {

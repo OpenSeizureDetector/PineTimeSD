@@ -40,16 +40,32 @@ void MotionController::Update(int16_t *fifo, uint16_t nFifo,  uint32_t nbSteps) 
     service->OnNewStepCountValue(nbSteps);
   }
 
-  // Just for now we only use the last value in the FIFO buffer
-  int16_t x = fifo[nFifo-3];
-  int16_t y = fifo[nFifo-2];
-  int16_t z = fifo[nFifo-1];
+  int32_t deltaSteps = nbSteps - this->nbSteps;
+  if (deltaSteps > 0) {
+    currentTripSteps += deltaSteps;
+  }
+  this->nbSteps = nbSteps;
 
-
-  if (service != nullptr ) {  //&& (this->x != x || yHistory[0] != y || zHistory[0] != z)) {
-    service->OnNewMotionValues(fifo, nFifo);
+  // Bma421::Process() returns {fifo == nullptr, nFifo == 0} when the sensor is
+  // not initialised, and nFifo == 0 whenever no new samples accumulated since
+  // the last call. Skip sample processing in both cases instead of indexing
+  // fifo[nFifo-3] out of bounds.
+  // See doc/AccelerometerSampleRateAnalysis.md §8.4.
+  if (fifo == nullptr || nFifo == 0) {
+    return;
   }
 
+  // Only the most recent frame is used for gesture detection. fifo is a flat
+  // array of [x,y,z] triplets, so the last frame of this batch starts at
+  // 3 * (nFifo - 1). (The previous fifo[nFifo-3] indexing read a stale,
+  // mis-aligned frame, or negative indices when nFifo < 3.)
+  int16_t x = fifo[3 * (nFifo - 1)];
+  int16_t y = fifo[3 * (nFifo - 1) + 1];
+  int16_t z = fifo[3 * (nFifo - 1) + 2];
+
+  if (service != nullptr) {
+    service->OnNewMotionValues(fifo, nFifo);
+  }
 
   lastTime = time;
   time = xTaskGetTickCount();
@@ -62,13 +78,6 @@ void MotionController::Update(int16_t *fifo, uint16_t nFifo,  uint32_t nbSteps) 
   zHistory[0] = z;
 
   stats = GetAccelStats();
-
-  int32_t deltaSteps = nbSteps - this->nbSteps;
-  if (deltaSteps > 0) {
-    currentTripSteps += deltaSteps;
-  }
-  this->nbSteps = nbSteps;
-
 }
 
 void MotionController::CheckOsdTimeout() {
